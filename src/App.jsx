@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react';
 import { Plus, Sparkles } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { useWatchlist } from './hooks/useWatchlist';
-import { Analytics } from "@vercel/analytics/next"
+import { Analytics } from '@vercel/analytics/react';
 import Header from './components/Header';
 import Filters from './components/Filters';
 import MovieCard from './components/MovieCard';
