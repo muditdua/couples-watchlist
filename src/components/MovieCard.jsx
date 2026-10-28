@@ -21,9 +21,9 @@ export default function MovieCard({ movie, onToggle, onRemove }) {
             <Star size={13} fill="currentColor" /> {movie.rating}
           </span>
         )}
-        {isSeries && (
-          <span className="absolute right-2 top-2 rounded-full bg-night/85 px-2.5 py-1 text-xs font-semibold text-blush">Series</span>
-        )}
+        <span className="absolute right-2 top-2 rounded-full bg-night/85 px-2.5 py-1 text-xs font-semibold text-blush">
+          {isSeries ? 'Series' : 'Movie'}
+        </span>
         {movie.watched && (
           <span className="absolute bottom-2 left-2 rounded-full bg-blush px-2.5 py-1 text-xs font-semibold text-night">Watched</span>
         )}
