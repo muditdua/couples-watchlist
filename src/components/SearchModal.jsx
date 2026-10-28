@@ -9,6 +9,7 @@ export default function SearchModal({ existingKeys, onAdd, onClose }) {
   const [busy, setBusy] = useState(null);
   const [added, setAdded] = useState(new Set());
   const [error, setError] = useState('');
+  const [searchType, setSearchType] = useState('all');
 
   const keyOf = (r) => `${r.media_type}-${r.tmdb_id}`;
 
@@ -16,11 +17,11 @@ export default function SearchModal({ existingKeys, onAdd, onClose }) {
   useEffect(() => {
     if (query.trim().length < 2) { setResults([]); return; }
     const t = setTimeout(async () => {
-      try { setResults(await searchTitles(query.trim())); setError(''); }
+      try { setResults(await searchTitles(query.trim(), searchType)); setError(''); }
       catch (e) { setError(e.message); }
     }, 350);
     return () => clearTimeout(t);
-  }, [query]);
+  }, [query, searchType]);
 
   const add = async (r) => {
     setBusy(keyOf(r));
@@ -39,6 +40,14 @@ export default function SearchModal({ existingKeys, onAdd, onClose }) {
           autoFocus className="input !pl-11" value={query} onChange={(e) => setQuery(e.target.value)}
           placeholder="Search by title" aria-label="Search movies and series"
         />
+      </div>
+      <div className="mt-3 flex rounded-full bg-plum p-1" role="tablist" aria-label="Search in">
+        {[['all', 'Everything'], ['movie', 'Movies'], ['tv', 'Series']].map(([v, label]) => (
+          <button
+            key={v} role="tab" aria-selected={searchType === v} onClick={() => setSearchType(v)}
+            className={`flex-1 rounded-full px-4 py-2 text-sm font-semibold transition ${searchType === v ? 'bg-velvet text-blush' : 'text-mist'}`}
+          >{label}</button>
+        ))}
       </div>
       {error && <p className="mt-3 text-sm text-red-300">{error}</p>}
       <ul className="mt-4 space-y-2">

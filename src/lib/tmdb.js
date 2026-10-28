@@ -23,11 +23,24 @@ const langName = (code) => {
 };
 
 // Searches movies and series together, then looks up the director and cast for each result
-export async function searchTitles(query) {
-  const data = await get('/search/multi', { query, include_adult: 'false' });
-  const items = data.results
-    .filter((r) => r.media_type === 'movie' || r.media_type === 'tv')
-    .slice(0, 8)
+export async function searchTitles(query, type = 'all') {
+  // "Players 2012" or "Players (2012)" -> title + year
+  const m = query.match(/^(.*?)[\s(]*((?:19|20)\d{2})\)?\s*$/);
+  const text = m && m[1].trim() ? m[1].trim() : query;
+  const year = m && m[1].trim() ? m[2] : null;
+
+  const none = { results: [] };
+  const [movies, shows] = await Promise.all([
+    type === 'tv' ? none : get('/search/movie', { query: text, include_adult: 'false', ...(year && { year }) }),
+    type === 'movie' ? none : get('/search/tv', { query: text, include_adult: 'false', ...(year && { first_air_date_year: year }) }),
+  ]);
+
+  const items = [
+    ...movies.results.map((r) => ({ ...r, media_type: 'movie' })),
+    ...shows.results.map((r) => ({ ...r, media_type: 'tv' })),
+  ]
+    .sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0))
+    .slice(0, 10)
     .map((r) => ({
       media_type: r.media_type,
       tmdb_id: r.id,
@@ -37,7 +50,7 @@ export async function searchTitles(query) {
       language: r.original_language ? langName(r.original_language) : null,
     }));
 
-  // Fetch credits for every result in parallel; a failed lookup just shows less detail
+  // Director and cast for each result, so same-named titles are easy to tell apart
   const credits = await Promise.allSettled(
     items.map((i) => get(`/${i.media_type}/${i.tmdb_id}`, { append_to_response: 'credits' }))
   );
