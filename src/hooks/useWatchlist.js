@@ -1,33 +1,33 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 
-export function useWatchlist(room) {
+const ROOM = 'our-list'; // fixed value, so you both always see the same list
+
+export function useWatchlist() {
   const [movies, setMovies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
     const { data, error } = await supabase
-      .from('movies').select('*').eq('room', room)
+      .from('movies').select('*').eq('room', ROOM)
       .order('created_at', { ascending: false });
     if (error) setError(error.message);
     else { setMovies(data); setError(''); }
     setLoading(false);
-  }, [room]);
+  }, []);
 
-  // Initial load + live updates from the other device
   useEffect(() => {
-    setLoading(true);
     load();
     const channel = supabase
-      .channel(`movies-${room}`)
+      .channel('movies-live')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'movies' }, load)
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [room, load]);
+  }, [load]);
 
   const add = async (details) => {
-    const { error } = await supabase.from('movies').insert({ ...details, room });
+    const { error } = await supabase.from('movies').insert({ ...details, room: ROOM });
     if (error && error.code !== '23505') throw error; // 23505 = already on the list
     await load();
   };

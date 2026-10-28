@@ -1,32 +1,29 @@
 import { useMemo, useState } from 'react';
 import { Plus, Sparkles } from 'lucide-react';
 import { supabase } from './lib/supabase';
-import { useRoom } from './hooks/useRoom';
 import { useWatchlist } from './hooks/useWatchlist';
 import Header from './components/Header';
 import Filters from './components/Filters';
 import MovieCard from './components/MovieCard';
 import SearchModal from './components/SearchModal';
 import DecisionModal from './components/DecisionModal';
-import RoomGate from './components/RoomGate';
 
 export default function App() {
-  const { room, setRoom, leave } = useRoom();
   if (!supabase) {
     return (
       <main className="mx-auto max-w-md px-6 py-20">
         <h1 className="font-display text-3xl font-semibold">Almost ready</h1>
         <p className="mt-3 text-mist">
-          Add <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> to your environment variables, then reload. See the README for the steps.
+          Add <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> to your environment variables, then reload.
         </p>
       </main>
     );
   }
-  return room ? <Watchlist room={room} onLeave={leave} /> : <RoomGate onEnter={setRoom} />;
+  return <Watchlist />;
 }
 
-function Watchlist({ room, onLeave }) {
-  const { movies, loading, error, add, toggleWatched, remove } = useWatchlist(room);
+function Watchlist() {
+  const { movies, loading, error, add, toggleWatched, remove } = useWatchlist();
   const [status, setStatus] = useState('to-watch');
   const [genre, setGenre] = useState('all');
   const [sort, setSort] = useState('shortest');
@@ -50,7 +47,7 @@ function Watchlist({ room, onLeave }) {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 px-4 pb-32">
-      <Header room={room} total={movies.length} toWatch={toWatch} onLeave={onLeave} />
+      <Header total={movies.length} toWatch={toWatch} />
       <Filters {...{ status, setStatus, genre, setGenre, genres, sort, setSort }} />
       {error && <p className="rounded-xl bg-red-950/60 p-3 text-sm text-red-200">Couldn't sync: {error}</p>}
 
