@@ -7,6 +7,7 @@ import Filters from './components/Filters';
 import MovieCard from './components/MovieCard';
 import SearchModal from './components/SearchModal';
 import DecisionModal from './components/DecisionModal';
+import ConfirmDialog from './components/ConfirmDialog';
 
 export default function App() {
   if (!supabase) {
@@ -29,6 +30,7 @@ function Watchlist() {
   const [genre, setGenre] = useState('all');
   const [sort, setSort] = useState('shortest');
   const [modal, setModal] = useState(null); // 'search' | 'decide' | null
+  const [pendingRemove, setPendingRemove] = useState(null);
 
   const genres = useMemo(() => [...new Set(movies.flatMap((m) => m.genres))].sort(), [movies]);
 
@@ -40,6 +42,7 @@ function Watchlist() {
     const by = {
       shortest: (a, b) => (a.runtime ?? 9999) - (b.runtime ?? 9999),
       rating: (a, b) => (b.rating ?? 0) - (a.rating ?? 0),
+      alpha: (a, b) => a.title.localeCompare(b.title),
       newest: (a, b) => new Date(b.created_at) - new Date(a.created_at),
     }[sort];
     return [...list].sort(by);
@@ -57,7 +60,7 @@ function Watchlist() {
         <p className="py-16 text-center text-mist">Loading your list…</p>
       ) : visible.length ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-          {visible.map((m) => <MovieCard key={m.id} movie={m} onToggle={toggleWatched} onRemove={remove} />)}
+          {visible.map((m) => <MovieCard key={m.id} movie={m} onToggle={toggleWatched} onRemove={setPendingRemove} />)}
         </div>
       ) : (
         <div className="py-16 text-center">
@@ -79,6 +82,13 @@ function Watchlist() {
         <SearchModal existingKeys={new Set(movies.map((m) => `${m.media_type}-${m.tmdb_id}`))} onAdd={add} onClose={() => setModal(null)} />
       )}
       {modal === 'decide' && <DecisionModal movies={movies} onClose={() => setModal(null)} />}
+      {pendingRemove && (
+          <ConfirmDialog
+            movie={pendingRemove}
+            onCancel={() => setPendingRemove(null)}
+            onConfirm={() => { remove(pendingRemove); setPendingRemove(null); }}
+          />
+        )}
     </div>
   );
 }

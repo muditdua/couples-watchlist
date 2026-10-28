@@ -53,8 +53,16 @@ export default function SearchModal({ existingKeys, onAdd, onClose }) {
               <div className="min-w-0 flex-1">
                 <p className="truncate font-semibold">{r.title}</p>
                 <p className="text-sm text-mist">
-                  {r.media_type === 'tv' ? 'Series' : 'Movie'}{r.year ? `, ${r.year}` : ''}
+                  {[r.media_type === 'tv' ? 'Series' : 'Movie', r.year, r.language].filter(Boolean).join(', ')}
                 </p>
+                {r.director && (
+                  <p className="truncate text-xs text-blush">
+                    {r.media_type === 'tv' ? 'Created by' : 'Dir.'} {r.director}
+                  </p>
+                )}
+                {r.cast?.length > 0 && (
+                  <p className="truncate text-xs text-mist/80">With {r.cast.join(', ')}</p>
+                )}
               </div>
               <button className="btn btn-primary !px-3.5 !py-2" disabled={have || busy === k} onClick={() => add(r)}>
                 {have ? 'On the list' : busy === k ? 'Adding…' : <><Plus size={16} /> Add</>}

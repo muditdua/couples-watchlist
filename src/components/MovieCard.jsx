@@ -44,7 +44,7 @@ export default function MovieCard({ movie, onToggle, onRemove }) {
             <Check size={14} /> {movie.watched ? 'Watch again' : 'Mark watched'}
           </button>
           <button
-            onClick={() => window.confirm(`Remove "${movie.title}"?`) && onRemove(movie)}
+            onClick={() => onRemove(movie)}
             aria-label={`Remove ${movie.title}`} className="btn btn-ghost !px-3 !py-2 text-mist"
           ><Trash2 size={14} /></button>
         </div>

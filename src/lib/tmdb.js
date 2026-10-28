@@ -17,9 +17,15 @@ export const posterUrl = (path, size = 'w500') =>
   path ? `https://image.tmdb.org/t/p/${size}${path}` : null;
 
 // Searches movies and series together
+const langName = (code) => {
+  try { return new Intl.DisplayNames(['en'], { type: 'language' }).of(code); }
+  catch { return null; }
+};
+
+// Searches movies and series together, then looks up the director and cast for each result
 export async function searchTitles(query) {
   const data = await get('/search/multi', { query, include_adult: 'false' });
-  return data.results
+  const items = data.results
     .filter((r) => r.media_type === 'movie' || r.media_type === 'tv')
     .slice(0, 8)
     .map((r) => ({
@@ -28,7 +34,26 @@ export async function searchTitles(query) {
       title: r.title || r.name,
       year: yearOf(r.release_date || r.first_air_date),
       poster_path: r.poster_path,
+      language: r.original_language ? langName(r.original_language) : null,
     }));
+
+  // Fetch credits for every result in parallel; a failed lookup just shows less detail
+  const credits = await Promise.allSettled(
+    items.map((i) => get(`/${i.media_type}/${i.tmdb_id}`, { append_to_response: 'credits' }))
+  );
+
+  return items.map((item, idx) => {
+    const d = credits[idx].status === 'fulfilled' ? credits[idx].value : null;
+    if (!d) return item;
+    const director = item.media_type === 'tv'
+      ? d.created_by?.[0]?.name
+      : d.credits?.crew?.find((c) => c.job === 'Director')?.name;
+    return {
+      ...item,
+      director: director ?? null,
+      cast: (d.credits?.cast ?? []).slice(0, 2).map((c) => c.name),
+    };
+  });
 }
 
 export async function getDetails(mediaType, tmdbId) {

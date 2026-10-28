@@ -1,3 +1,5 @@
+import SortMenu from './SortMenu';
+
 const STATUS = [['to-watch', 'To watch'], ['watched', 'Watched'], ['all', 'All']];
 const TYPES = [['all', 'Everything'], ['movie', 'Movies'], ['tv', 'Series']];
 
@@ -13,14 +15,7 @@ export default function Filters({ status, setStatus, type, setType, genre, setGe
             >{label}</button>
           ))}
         </div>
-        <select
-          value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Sort"
-          className="rounded-full border border-velvet bg-plum px-3 py-2.5 text-sm text-stone-100"
-        >
-          <option value="shortest">Shortest first</option>
-          <option value="rating">Highest rated</option>
-          <option value="newest">Recently added</option>
-        </select>
+        <SortMenu value={sort} onChange={setSort} />
       </div>
       <div className="flex rounded-full bg-plum p-1 sm:w-fit" role="tablist">
         {TYPES.map(([v, label]) => (
