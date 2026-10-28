@@ -1,11 +1,28 @@
+import { Search, X } from 'lucide-react';
 import SortMenu from './SortMenu';
 
 const STATUS = [['to-watch', 'To watch'], ['watched', 'Watched'], ['all', 'All']];
 const TYPES = [['all', 'Everything'], ['movie', 'Movies'], ['tv', 'Series']];
 
-export default function Filters({ status, setStatus, type, setType, genre, setGenre, genres, sort, setSort }) {
+export default function Filters({
+  query, setQuery, status, setStatus, type, setType, genre, setGenre, genres, sort, setSort,
+}) {
   return (
     <div className="space-y-3">
+      <div className="relative">
+        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-mist" />
+        <input
+          className="input !pl-11 !pr-11" value={query} onChange={(e) => setQuery(e.target.value)}
+          placeholder="Search our list by title, director or cast" aria-label="Search our list"
+        />
+        {query && (
+          <button
+            onClick={() => setQuery('')} aria-label="Clear search"
+            className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-2 text-mist hover:bg-velvet"
+          ><X size={16} /></button>
+        )}
+      </div>
+
       <div className="flex items-center justify-between gap-3">
         <div className="flex rounded-full bg-plum p-1" role="tablist">
           {STATUS.map(([v, label]) => (
@@ -17,6 +34,7 @@ export default function Filters({ status, setStatus, type, setType, genre, setGe
         </div>
         <SortMenu value={sort} onChange={setSort} />
       </div>
+
       <div className="flex rounded-full bg-plum p-1 sm:w-fit" role="tablist">
         {TYPES.map(([v, label]) => (
           <button
@@ -25,6 +43,7 @@ export default function Filters({ status, setStatus, type, setType, genre, setGe
           >{label}</button>
         ))}
       </div>
+
       <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
         {['All', ...genres].map((g) => {
           const active = (g === 'All' && genre === 'all') || g === genre;
