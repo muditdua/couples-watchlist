@@ -21,7 +21,7 @@ export default function App() {
       </main>
     );
   }
-  return <Watchlist />;
+  return <div> <Watchlist /> <Analytics /></div>;
 }
 
 function Watchlist() {
