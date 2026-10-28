@@ -17,6 +17,7 @@ export function useWatchlist() {
     setLoading(false);
   }, []);
 
+  // Initial load + live updates from the other device
   useEffect(() => {
     load();
     const channel = supabase

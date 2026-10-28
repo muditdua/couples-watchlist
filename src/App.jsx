@@ -14,7 +14,7 @@ export default function App() {
       <main className="mx-auto max-w-md px-6 py-20">
         <h1 className="font-display text-3xl font-semibold">Almost ready</h1>
         <p className="mt-3 text-mist">
-          Add <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> to your environment variables, then reload.
+          Add <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> to <code>.env.local</code>, then restart the dev server. See the README.
         </p>
       </main>
     );
@@ -25,6 +25,7 @@ export default function App() {
 function Watchlist() {
   const { movies, loading, error, add, toggleWatched, remove } = useWatchlist();
   const [status, setStatus] = useState('to-watch');
+  const [type, setType] = useState('all');
   const [genre, setGenre] = useState('all');
   const [sort, setSort] = useState('shortest');
   const [modal, setModal] = useState(null); // 'search' | 'decide' | null
@@ -34,6 +35,7 @@ function Watchlist() {
   const visible = useMemo(() => {
     const list = movies.filter((m) =>
       (status === 'all' || (status === 'watched') === m.watched) &&
+      (type === 'all' || m.media_type === type) &&
       (genre === 'all' || m.genres.includes(genre)));
     const by = {
       shortest: (a, b) => (a.runtime ?? 9999) - (b.runtime ?? 9999),
@@ -41,14 +43,14 @@ function Watchlist() {
       newest: (a, b) => new Date(b.created_at) - new Date(a.created_at),
     }[sort];
     return [...list].sort(by);
-  }, [movies, status, genre, sort]);
+  }, [movies, status, type, genre, sort]);
 
   const toWatch = movies.filter((m) => !m.watched).length;
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 px-4 pb-32">
       <Header total={movies.length} toWatch={toWatch} />
-      <Filters {...{ status, setStatus, genre, setGenre, genres, sort, setSort }} />
+      <Filters {...{ status, setStatus, type, setType, genre, setGenre, genres, sort, setSort }} />
       {error && <p className="rounded-xl bg-red-950/60 p-3 text-sm text-red-200">Couldn't sync: {error}</p>}
 
       {loading ? (
@@ -60,7 +62,7 @@ function Watchlist() {
       ) : (
         <div className="py-16 text-center">
           <p className="font-display text-2xl">{movies.length ? 'Nothing matches those filters' : 'Your list is empty'}</p>
-          <p className="mt-2 text-mist">{movies.length ? 'Try another genre or status.' : 'Add the first movie for your next night in.'}</p>
+          <p className="mt-2 text-mist">{movies.length ? 'Try another genre, type or status.' : 'Add the first movie or series for your next night in.'}</p>
         </div>
       )}
 
@@ -69,12 +71,12 @@ function Watchlist() {
           <Sparkles size={18} /> Help us decide
         </button>
         <button onClick={() => setModal('search')} className="btn btn-primary !px-5 !py-3.5 shadow-xl shadow-black/40">
-          <Plus size={18} /> Add movie
+          <Plus size={18} /> Add title
         </button>
       </nav>
 
       {modal === 'search' && (
-        <SearchModal existingIds={new Set(movies.map((m) => m.tmdb_id))} onAdd={add} onClose={() => setModal(null)} />
+        <SearchModal existingKeys={new Set(movies.map((m) => `${m.media_type}-${m.tmdb_id}`))} onAdd={add} onClose={() => setModal(null)} />
       )}
       {modal === 'decide' && <DecisionModal movies={movies} onClose={() => setModal(null)} />}
     </div>

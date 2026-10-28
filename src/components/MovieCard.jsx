@@ -4,7 +4,12 @@ import { fmtRuntime } from '../lib/format';
 
 export default function MovieCard({ movie, onToggle, onRemove }) {
   const poster = posterUrl(movie.poster_path);
-  const people = [movie.director && `Dir. ${movie.director}`, movie.cast_names?.slice(0, 2).join(', ')].filter(Boolean);
+  const isSeries = movie.media_type === 'tv';
+  const people = [
+    movie.director && `${isSeries ? 'Created by' : 'Dir.'} ${movie.director}`,
+    movie.cast_names?.slice(0, 2).join(', '),
+  ].filter(Boolean);
+
   return (
     <article className={`flex flex-col overflow-hidden rounded-2xl bg-plum ${movie.watched ? 'opacity-70' : ''}`}>
       <div className="relative aspect-[2/3] bg-velvet">
@@ -16,15 +21,21 @@ export default function MovieCard({ movie, onToggle, onRemove }) {
             <Star size={13} fill="currentColor" /> {movie.rating}
           </span>
         )}
+        {isSeries && (
+          <span className="absolute right-2 top-2 rounded-full bg-night/85 px-2.5 py-1 text-xs font-semibold text-blush">Series</span>
+        )}
         {movie.watched && (
           <span className="absolute bottom-2 left-2 rounded-full bg-blush px-2.5 py-1 text-xs font-semibold text-night">Watched</span>
         )}
       </div>
       <div className="flex flex-1 flex-col gap-1.5 p-3">
         <h3 className="font-display text-lg font-semibold leading-snug">{movie.title}</h3>
-        <div className="flex gap-3 text-sm text-mist">
-          <span className="font-semibold text-stone-100">{fmtRuntime(movie.runtime)}</span>
+        <div className="flex flex-wrap gap-x-3 text-sm text-mist">
+          <span className="font-semibold text-stone-100">
+            {fmtRuntime(movie.runtime)}{isSeries && movie.runtime ? ' per episode' : ''}
+          </span>
           {movie.year && <span>{movie.year}</span>}
+          {isSeries && movie.seasons > 0 && <span>{movie.seasons} {movie.seasons === 1 ? 'season' : 'seasons'}</span>}
         </div>
         {movie.genres?.length > 0 && <p className="text-sm text-blush">{movie.genres.slice(0, 3).join(', ')}</p>}
         {people.map((p) => <p key={p} className="text-xs text-mist">{p}</p>)}

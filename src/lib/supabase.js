@@ -1,7 +1,11 @@
 import { createClient } from '@supabase/supabase-js';
 
-const url = import.meta.env.VITE_SUPABASE_URL;
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const clean = (v) => (v || '').trim().replace(/^["']|["']$/g, '');
+const rawUrl = clean(import.meta.env.VITE_SUPABASE_URL);
+const key = clean(import.meta.env.VITE_SUPABASE_ANON_KEY);
 
-// null when env vars are missing, so the app can show a friendly setup message
+// Keep only https://xxxx.supabase.co, even if extra path text was pasted by mistake
+let url = '';
+try { url = rawUrl ? new URL(rawUrl).origin : ''; } catch { /* invalid URL */ }
+
 export const supabase = url && key ? createClient(url, key) : null;

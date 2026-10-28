@@ -51,7 +51,7 @@ export default function DecisionModal({ movies, onClose }) {
       <button className="btn btn-primary mt-6 w-full" onClick={decide} disabled={loading || !pool.length}>
         <Sparkles size={16} /> {loading ? 'Picking…' : 'Pick our top 3'}
       </button>
-      {!pool.length && <p className="mt-3 text-sm text-mist">Add a few movies to your "To watch" list first.</p>}
+      {!pool.length && <p className="mt-3 text-sm text-mist">Add a few movies or series to your "To watch" list first.</p>}
       {note && <p className="mt-3 text-sm text-mist">{note}</p>}
 
       {picks && (
@@ -64,7 +64,9 @@ export default function DecisionModal({ movies, onClose }) {
               </div>
               <div>
                 <p className="font-display text-lg font-semibold leading-snug">{movie.title}</p>
-                <p className="text-sm text-ember">{fmtRuntime(movie.runtime)}</p>
+                <p className="text-sm text-ember">
+                  {fmtRuntime(movie.runtime)}{movie.media_type === 'tv' ? ' per episode, series' : ''}
+                </p>
                 <p className="mt-1 text-sm text-mist">{reason}</p>
               </div>
             </li>

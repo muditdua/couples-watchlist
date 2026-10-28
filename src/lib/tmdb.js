@@ -11,31 +11,52 @@ async function get(path, params = {}) {
   return res.json();
 }
 
+const yearOf = (date) => (date ? Number(date.slice(0, 4)) : null);
+
 export const posterUrl = (path, size = 'w500') =>
   path ? `https://image.tmdb.org/t/p/${size}${path}` : null;
 
-export async function searchMovies(query) {
-  const data = await get('/search/movie', { query, include_adult: 'false' });
-  return data.results.slice(0, 8).map((m) => ({
-    tmdb_id: m.id,
-    title: m.title,
-    year: m.release_date ? Number(m.release_date.slice(0, 4)) : null,
-    poster_path: m.poster_path,
-  }));
+// Searches movies and series together
+export async function searchTitles(query) {
+  const data = await get('/search/multi', { query, include_adult: 'false' });
+  return data.results
+    .filter((r) => r.media_type === 'movie' || r.media_type === 'tv')
+    .slice(0, 8)
+    .map((r) => ({
+      media_type: r.media_type,
+      tmdb_id: r.id,
+      title: r.title || r.name,
+      year: yearOf(r.release_date || r.first_air_date),
+      poster_path: r.poster_path,
+    }));
 }
 
-// Full details (runtime, genres, director, cast) fetched once, then stored in the database
-export async function getMovieDetails(tmdbId) {
-  const d = await get(`/movie/${tmdbId}`, { append_to_response: 'credits' });
-  return {
+export async function getDetails(mediaType, tmdbId) {
+  const d = await get(`/${mediaType}/${tmdbId}`, { append_to_response: 'credits' });
+  const base = {
+    media_type: mediaType,
     tmdb_id: d.id,
-    title: d.title,
-    year: d.release_date ? Number(d.release_date.slice(0, 4)) : null,
     poster_path: d.poster_path,
-    runtime: d.runtime || null,
     genres: d.genres.map((g) => g.name),
     rating: d.vote_average ? Math.round(d.vote_average * 10) / 10 : null,
-    director: d.credits?.crew?.find((c) => c.job === 'Director')?.name ?? null,
     cast_names: (d.credits?.cast ?? []).slice(0, 3).map((c) => c.name),
+  };
+  if (mediaType === 'tv') {
+    return {
+      ...base,
+      title: d.name,
+      year: yearOf(d.first_air_date),
+      runtime: d.episode_run_time?.[0] || d.last_episode_to_air?.runtime || null, // minutes per episode
+      seasons: d.number_of_seasons ?? null,
+      director: d.created_by?.[0]?.name ?? null, // shown as "Created by"
+    };
+  }
+  return {
+    ...base,
+    title: d.title,
+    year: yearOf(d.release_date),
+    runtime: d.runtime || null,
+    seasons: null,
+    director: d.credits?.crew?.find((c) => c.job === 'Director')?.name ?? null,
   };
 }

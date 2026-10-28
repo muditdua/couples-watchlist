@@ -7,11 +7,13 @@ export const geminiEnabled = Boolean(KEY);
 export async function suggestWithGemini(movies, { minutes, vibe }) {
   const list = movies.map((m) => ({
     id: m.id, title: m.title, year: m.year,
-    runtimeMinutes: m.runtime, genres: m.genres, rating: m.rating,
+    type: m.media_type === 'tv' ? 'series' : 'movie',
+    runtimeMinutes: m.runtime, // for a series this is one episode
+    seasons: m.seasons, genres: m.genres, rating: m.rating,
   }));
-  const prompt = `You are helping a couple choose a movie for tonight.
+  const prompt = `You are helping a couple choose a movie or series for tonight.
 Their unwatched watchlist (JSON): ${JSON.stringify(list)}
-Time available: ${minutes ? `${minutes} minutes (never suggest a longer movie)` : 'no limit'}.
+Time available: ${minutes ? `${minutes} minutes (never suggest anything longer; for a series, one episode must fit)` : 'no limit'}.
 Mood they want: ${vibe || 'no preference'}.
 Pick up to 3 movies from the list that best fit. Use only ids from the list.
 Reply with only a JSON array: [{"id": "<id>", "reason": "<one short, warm sentence>"}]`;
