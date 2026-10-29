@@ -57,3 +57,21 @@ Open the same site link on both phones and you're looking at the same list. Add 
 - Streaming logos come from TMDB's watch-provider data (powered by JustWatch). The country defaults to India; change it with `VITE_WATCH_REGION` (for example `US`, `GB`).
 - Tap any card to open its details: summary, cast, where to watch, and for series a list of seasons that expand into episodes.
 - Availability is cached in the browser for 24 hours to keep things fast and within TMDB's limits.
+
+## Login: magic link and forgot password
+
+The login page also offers "Email me a magic link" and "Forgot password?". For the links in those emails to land back on your site:
+
+1. In Supabase open **Authentication > URL Configuration**.
+2. Set **Site URL** to your live address (for example `https://our-watchlist-mn.vercel.app`).
+3. Under **Redirect URLs** add your live address and `http://localhost:5173`.
+
+Notes: sign-ups can stay switched off (the magic link never creates new accounts). Supabase's built-in email sender is limited to a few emails per hour, which is plenty for two people.
+
+## Feature switches
+
+`src/config.js` has `episodeTracking: true`. Set it to `false` to hide episode ticking everywhere (the data is kept).
+
+## Upgrading an existing database
+
+If your table was created before "Added by", "Wanted by" and episode tracking, run `supabase-upgrade-v2.sql` once in the Supabase SQL Editor.

@@ -1,13 +1,21 @@
-import { Check, Star, Trash2 } from 'lucide-react';
+import { Check, Heart, Star, Trash2 } from 'lucide-react';
 import { posterUrl } from '../lib/tmdb';
 import { fmtRuntime } from '../lib/format';
 import { useProviders } from '../hooks/useProviders';
 import { ProviderRow } from './Providers';
+import { FEATURES } from '../config';
 
-export default function MovieCard({ movie, onToggle, onRemove, onOpen }) {
+const shortDate = (iso) =>
+  iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
+
+export default function MovieCard({ movie, meId, onToggle, onLike, onRemove, onOpen }) {
   const poster = posterUrl(movie.poster_path);
   const isSeries = movie.media_type === 'tv';
   const providers = useProviders(movie.media_type, movie.tmdb_id, movie.tmdb_id > 0); // hand-added titles have no TMDB id
+  const likes = Object.keys(movie.likes ?? {});
+  const iWant = likes.includes(meId);
+  const bothWant = likes.length >= 2;
+  const epsWatched = Object.values(movie.episodes_watched ?? {}).reduce((n, a) => n + a.length, 0);
   const people = [
     movie.director && `${isSeries ? 'Created by' : 'Dir.'} ${movie.director}`,
     movie.cast_names?.slice(0, 2).join(', '),
@@ -28,7 +36,14 @@ export default function MovieCard({ movie, onToggle, onRemove, onOpen }) {
           {isSeries ? 'Series' : 'Movie'}
         </span>
         {movie.watched && (
-          <span className="absolute bottom-2 left-2 rounded-full bg-blush px-2.5 py-1 text-xs font-semibold text-night">Watched</span>
+          <span className="absolute bottom-2 left-2 rounded-full bg-blush px-2.5 py-1 text-xs font-semibold text-night">
+            Watched{movie.watched_at ? ` ${shortDate(movie.watched_at)}` : ''}
+          </span>
+        )}
+        {bothWant && !movie.watched && (
+          <span className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-blush px-2.5 py-1 text-xs font-semibold text-night">
+            <Heart size={12} fill="currentColor" /> Both want
+          </span>
         )}
       </div>
       <div className="flex flex-1 flex-col gap-1.5 p-3">
@@ -49,14 +64,28 @@ export default function MovieCard({ movie, onToggle, onRemove, onOpen }) {
         </div>
         {movie.genres?.length > 0 && <p className="text-sm text-blush">{movie.genres.slice(0, 3).join(', ')}</p>}
         {people.map((p) => <p key={p} className="text-xs text-mist">{p}</p>)}
+        {FEATURES.episodeTracking && isSeries && epsWatched > 0 && (
+          <p className="text-xs font-semibold text-ember">{epsWatched} {epsWatched === 1 ? 'episode' : 'episodes'} watched</p>
+        )}
+        {movie.added_by && <p className="text-xs text-mist/80">Added by {movie.added_by}</p>}
         {movie.tmdb_id > 0 && <div className="pt-1"><ProviderRow data={providers} /></div>}
         <div className="relative z-10 mt-auto flex gap-2 pt-3">
-          <button onClick={() => onToggle(movie)} className="btn btn-ghost flex-1 !py-2 !text-xs">
-            <Check size={14} /> {movie.watched ? 'Watch again' : 'Mark watched'}
+          <button onClick={() => onToggle(movie)} className="btn btn-ghost min-w-0 flex-1 !px-2 !py-2.5 !text-xs">
+            <Check size={14} className="shrink-0" />
+            <span className="truncate sm:hidden">{movie.watched ? 'Again' : 'Watched'}</span>
+            <span className="hidden truncate sm:inline">{movie.watched ? 'Watch again' : 'Mark watched'}</span>
+          </button>
+          <button
+            onClick={() => onLike(movie)} aria-pressed={iWant}
+            aria-label={iWant ? 'Remove my vote' : 'I want to watch this'}
+            className={`btn shrink-0 !gap-1 !px-3 !py-2.5 !text-xs ${iWant ? 'bg-blush text-night' : 'btn-ghost text-mist'}`}
+          >
+            <Heart size={14} fill={iWant ? 'currentColor' : 'none'} />
+            {likes.length > 0 && likes.length}
           </button>
           <button
             onClick={() => onRemove(movie)}
-            aria-label={`Remove ${movie.title}`} className="btn btn-ghost !px-3 !py-2 text-mist"
+            aria-label={`Remove ${movie.title}`} className="btn btn-ghost hidden !px-3 !py-2.5 text-mist sm:inline-flex"
           ><Trash2 size={14} /></button>
         </div>
       </div>

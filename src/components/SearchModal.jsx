@@ -63,7 +63,7 @@ export default function SearchModal({ existingKeys, onAdd, onClose }) {
                 {r.poster_path && <img src={posterUrl(r.poster_path, 'w92')} alt="" className="h-full w-full object-cover" />}
               </div>
               <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">{r.title}</p>
+                <p className="font-semibold leading-snug">{r.title}</p>
                 <p className="text-sm text-mist">
                   {[r.media_type === 'tv' ? 'Series' : 'Movie', r.year, r.language].filter(Boolean).join(', ')}
                 </p>
@@ -77,7 +77,7 @@ export default function SearchModal({ existingKeys, onAdd, onClose }) {
                 )}
                 {r.providers && <div className="mt-1.5"><ProviderRow data={r.providers} small /></div>}
               </div>
-              <button className="btn btn-primary !px-3.5 !py-2" disabled={have || busy === k} onClick={() => add(r)}>
+              <button className="btn btn-primary shrink-0 !px-3.5 !py-2.5" disabled={have || busy === k} onClick={() => add(r)}>
                 {have ? 'On the list' : busy === k ? 'Adding…' : <><Plus size={16} /> Add</>}
               </button>
             </li>

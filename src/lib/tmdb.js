@@ -50,7 +50,7 @@ export const logoUrl = (path) => (path ? `https://image.tmdb.org/t/p/w92${path}`
 
 // ---------- Detail pane ----------
 export async function getFullDetails(mediaType, tmdbId) {
-  const d = await get(`/${mediaType}/${tmdbId}`, { append_to_response: 'credits,watch/providers' });
+  const d = await get(`/${mediaType}/${tmdbId}`, { append_to_response: 'credits,watch/providers,recommendations' });
   return {
     overview: d.overview || '',
     tagline: d.tagline || '',
@@ -60,6 +60,13 @@ export async function getFullDetails(mediaType, tmdbId) {
       : d.credits?.crew?.find((c) => c.job === 'Director')?.name ?? null,
     providers: pickProviders(d['watch/providers']),
     status: d.status || '',
+    similar: (d.recommendations?.results ?? [])
+      .filter((r) => r.poster_path)
+      .slice(0, 10)
+      .map((r) => ({
+        media_type: mediaType, tmdb_id: r.id, title: r.title || r.name,
+        year: yearOf(r.release_date || r.first_air_date), poster_path: r.poster_path,
+      })),
     seasons: mediaType === 'tv'
       ? (d.seasons ?? [])
           .filter((x) => x.episode_count > 0)

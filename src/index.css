@@ -4,7 +4,7 @@
 
 @layer base {
   html { color-scheme: dark; -webkit-tap-highlight-color: transparent; }
-  body { @apply bg-night text-stone-100 font-sans antialiased; }
+  body { @apply bg-night text-stone-100 font-sans antialiased; overflow-x: hidden; }
   :focus-visible { @apply outline outline-2 outline-offset-2 outline-blush; }
   .no-scrollbar::-webkit-scrollbar { display: none; }
   .no-scrollbar { scrollbar-width: none; }

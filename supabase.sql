@@ -15,6 +15,9 @@ create table public.movies (
   cast_names text[] not null default '{}',
   watched boolean not null default false,
   watched_at timestamptz,
+  added_by text,                     -- display name of who added it
+  likes jsonb not null default '{}'::jsonb,            -- { userId: name } of who wants it
+  episodes_watched jsonb not null default '{}'::jsonb, -- { "1": [1,2,3] } episode tracking
   created_at timestamptz not null default now(),
   unique (room, media_type, tmdb_id)
 );
@@ -22,8 +25,10 @@ create table public.movies (
 create index movies_room_idx on public.movies (room);
 
 alter table public.movies enable row level security;
-create policy "open access for now"
-  on public.movies for all to anon using (true) with check (true);
+-- Only signed-in users (your two accounts) can read or write.
+-- Create them under Authentication > Users, and turn off sign-ups.
+create policy "signed-in users only"
+  on public.movies for all to authenticated using (true) with check (true);
 
 -- Turn on live sync
 alter publication supabase_realtime add table public.movies;
