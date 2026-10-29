@@ -10,6 +10,7 @@ import MovieCard from './components/MovieCard';
 import SearchModal from './components/SearchModal';
 import DecisionModal from './components/DecisionModal';
 import ConfirmDialog from './components/ConfirmDialog';
+import DetailModal from './components/DetailModal';
 
 export default function App() {
   const [session, setSession] = useState(undefined); // undefined = still checking
@@ -44,6 +45,8 @@ function Watchlist({ onSignOut }) {
   const [modal, setModal] = useState(null); // 'search' | 'decide' | null
   const [pendingRemove, setPendingRemove] = useState(null);
   const [query, setQuery] = useState('');
+  const [detailId, setDetailId] = useState(null);
+  const detailMovie = movies.find((m) => m.id === detailId); // looked up live so toggles show instantly
 
   const genres = useMemo(() => [...new Set(movies.flatMap((m) => m.genres))].sort(), [movies]);
 
@@ -76,7 +79,7 @@ function Watchlist({ onSignOut }) {
         <p className="py-16 text-center text-mist">Loading your list…</p>
       ) : visible.length ? (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-          {visible.map((m) => <MovieCard key={m.id} movie={m} onToggle={toggleWatched} onRemove={setPendingRemove} />)}
+          {visible.map((m) => <MovieCard key={m.id} movie={m} onToggle={toggleWatched} onRemove={setPendingRemove} onOpen={(x) => setDetailId(x.id)} />)}
         </div>
       ) : (
         <div className="py-16 text-center">
@@ -101,6 +104,7 @@ function Watchlist({ onSignOut }) {
       {modal === 'search' && (
         <SearchModal existingKeys={new Set(movies.map((m) => `${m.media_type}-${m.tmdb_id}`))} onAdd={add} onClose={() => setModal(null)} />
       )}
+      {detailMovie && <DetailModal movie={detailMovie} onToggle={toggleWatched} onClose={() => setDetailId(null)} />}
       {modal === 'decide' && <DecisionModal movies={movies} onClose={() => setModal(null)} />}
       {pendingRemove && (
           <ConfirmDialog

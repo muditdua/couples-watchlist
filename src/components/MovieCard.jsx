@@ -1,17 +1,20 @@
 import { Check, Star, Trash2 } from 'lucide-react';
 import { posterUrl } from '../lib/tmdb';
 import { fmtRuntime } from '../lib/format';
+import { useProviders } from '../hooks/useProviders';
+import { ProviderRow } from './Providers';
 
-export default function MovieCard({ movie, onToggle, onRemove }) {
+export default function MovieCard({ movie, onToggle, onRemove, onOpen }) {
   const poster = posterUrl(movie.poster_path);
   const isSeries = movie.media_type === 'tv';
+  const providers = useProviders(movie.media_type, movie.tmdb_id, movie.tmdb_id > 0); // hand-added titles have no TMDB id
   const people = [
     movie.director && `${isSeries ? 'Created by' : 'Dir.'} ${movie.director}`,
     movie.cast_names?.slice(0, 2).join(', '),
   ].filter(Boolean);
 
   return (
-    <article className={`flex flex-col overflow-hidden rounded-2xl bg-plum ${movie.watched ? 'opacity-70' : ''}`}>
+    <article className={`relative flex flex-col overflow-hidden rounded-2xl bg-plum ${movie.watched ? 'opacity-70' : ''}`}>
       <div className="relative aspect-[2/3] bg-velvet">
         {poster
           ? <img src={poster} alt={`${movie.title} poster`} loading="lazy" className="h-full w-full object-cover" />
@@ -29,7 +32,14 @@ export default function MovieCard({ movie, onToggle, onRemove }) {
         )}
       </div>
       <div className="flex flex-1 flex-col gap-1.5 p-3">
-        <h3 className="font-display text-lg font-semibold leading-snug">{movie.title}</h3>
+        {/* The title button stretches over the whole card, so tapping anywhere opens the details */}
+        <h3 className="font-display text-lg font-semibold leading-snug">
+          <button
+            onClick={() => onOpen(movie)}
+            className="text-left after:absolute after:inset-0 after:content-['']"
+            aria-label={`Open details for ${movie.title}`}
+          >{movie.title}</button>
+        </h3>
         <div className="flex flex-wrap gap-x-3 text-sm text-mist">
           <span className="font-semibold text-stone-100">
             {fmtRuntime(movie.runtime)}{isSeries && movie.runtime ? ' per episode' : ''}
@@ -39,7 +49,8 @@ export default function MovieCard({ movie, onToggle, onRemove }) {
         </div>
         {movie.genres?.length > 0 && <p className="text-sm text-blush">{movie.genres.slice(0, 3).join(', ')}</p>}
         {people.map((p) => <p key={p} className="text-xs text-mist">{p}</p>)}
-        <div className="mt-auto flex gap-2 pt-3">
+        {movie.tmdb_id > 0 && <div className="pt-1"><ProviderRow data={providers} /></div>}
+        <div className="relative z-10 mt-auto flex gap-2 pt-3">
           <button onClick={() => onToggle(movie)} className="btn btn-ghost flex-1 !py-2 !text-xs">
             <Check size={14} /> {movie.watched ? 'Watch again' : 'Mark watched'}
           </button>

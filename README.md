@@ -51,3 +51,9 @@ Open the same site link on both phones and you're looking at the same list. Add 
 - **"Invalid path" error:** `VITE_SUPABASE_URL` should be only `https://YOUR-PROJECT.supabase.co`. Restart `npm run dev` after editing `.env.local`.
 - **Ratings** are TMDB scores out of 10 (TMDB doesn't provide IMDb ratings).
 - Supabase free projects pause after a week of no activity. Click Restore in the dashboard if that happens.
+
+## Where to watch and details pane
+
+- Streaming logos come from TMDB's watch-provider data (powered by JustWatch). The country defaults to India; change it with `VITE_WATCH_REGION` (for example `US`, `GB`).
+- Tap any card to open its details: summary, cast, where to watch, and for series a list of seasons that expand into episodes.
+- Availability is cached in the browser for 24 hours to keep things fast and within TMDB's limits.

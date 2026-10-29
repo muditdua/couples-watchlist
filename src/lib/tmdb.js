@@ -16,6 +16,71 @@ const yearOf = (date) => (date ? Number(date.slice(0, 4)) : null);
 export const posterUrl = (path, size = 'w500') =>
   path ? `https://image.tmdb.org/t/p/${size}${path}` : null;
 
+// ---------- Where to watch (data from JustWatch, via TMDB) ----------
+export const REGION = (import.meta.env.VITE_WATCH_REGION || 'IN').toUpperCase();
+export const REGION_NAME = (() => {
+  try { return new Intl.DisplayNames(['en'], { type: 'region' }).of(REGION) || REGION; }
+  catch { return REGION; }
+})();
+
+const tidy = (list = [], skip = new Set()) => {
+  const seen = new Set();
+  return [...list]
+    .sort((a, b) => (a.display_priority ?? 99) - (b.display_priority ?? 99))
+    .filter((p) => !skip.has(p.provider_id) && !seen.has(p.provider_id) && seen.add(p.provider_id))
+    .map((p) => ({ id: p.provider_id, name: p.provider_name, logo: p.logo_path }));
+};
+
+// Turns TMDB's per-country response into { link, stream, free, rent } for our region
+export function pickProviders(wp) {
+  const r = wp?.results?.[REGION] ?? {};
+  const stream = tidy(r.flatrate);
+  const taken = new Set(stream.map((p) => p.id));
+  const free = tidy([...(r.free ?? []), ...(r.ads ?? [])], taken);
+  free.forEach((p) => taken.add(p.id));
+  const rent = tidy([...(r.rent ?? []), ...(r.buy ?? [])], taken);
+  return { link: r.link ?? null, stream, free, rent };
+}
+
+export async function getProviders(mediaType, tmdbId) {
+  return pickProviders(await get(`/${mediaType}/${tmdbId}/watch/providers`));
+}
+
+export const logoUrl = (path) => (path ? `https://image.tmdb.org/t/p/w92${path}` : null);
+
+// ---------- Detail pane ----------
+export async function getFullDetails(mediaType, tmdbId) {
+  const d = await get(`/${mediaType}/${tmdbId}`, { append_to_response: 'credits,watch/providers' });
+  return {
+    overview: d.overview || '',
+    tagline: d.tagline || '',
+    cast: (d.credits?.cast ?? []).slice(0, 6).map((c) => c.name),
+    director: mediaType === 'tv'
+      ? (d.created_by ?? []).map((c) => c.name).join(', ') || null
+      : d.credits?.crew?.find((c) => c.job === 'Director')?.name ?? null,
+    providers: pickProviders(d['watch/providers']),
+    status: d.status || '',
+    seasons: mediaType === 'tv'
+      ? (d.seasons ?? [])
+          .filter((x) => x.episode_count > 0)
+          .map((x) => ({
+            number: x.season_number, name: x.name, episodes: x.episode_count,
+            year: yearOf(x.air_date), overview: x.overview || '',
+          }))
+          .sort((a, b) => (a.number === 0) - (b.number === 0) || a.number - b.number) // Specials last
+      : [],
+  };
+}
+
+export async function getSeason(tvId, seasonNumber) {
+  const d = await get(`/tv/${tvId}/season/${seasonNumber}`);
+  return (d.episodes ?? []).map((e) => ({
+    id: e.id, number: e.episode_number, name: e.name,
+    overview: e.overview || '', runtime: e.runtime || null,
+    airDate: e.air_date || null, still: e.still_path || null,
+  }));
+}
+
 // Searches movies and series together
 const langName = (code) => {
   try { return new Intl.DisplayNames(['en'], { type: 'language' }).of(code); }
@@ -52,7 +117,7 @@ export async function searchTitles(query, type = 'all') {
 
   // Director and cast for each result, so same-named titles are easy to tell apart
   const credits = await Promise.allSettled(
-    items.map((i) => get(`/${i.media_type}/${i.tmdb_id}`, { append_to_response: 'credits' }))
+    items.map((i) => get(`/${i.media_type}/${i.tmdb_id}`, { append_to_response: 'credits,watch/providers' }))
   );
 
   return items.map((item, idx) => {
@@ -65,6 +130,7 @@ export async function searchTitles(query, type = 'all') {
       ...item,
       director: director ?? null,
       cast: (d.credits?.cast ?? []).slice(0, 2).map((c) => c.name),
+      providers: pickProviders(d['watch/providers']),
     };
   });
 }

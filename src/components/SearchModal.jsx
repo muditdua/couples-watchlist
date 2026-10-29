@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import { Plus, Search } from 'lucide-react';
 import Modal from './Modal';
 import { getDetails, posterUrl, searchTitles } from '../lib/tmdb';
+import { storeProviders } from '../lib/providers';
+import { ProviderRow } from './Providers';
 
 export default function SearchModal({ existingKeys, onAdd, onClose }) {
   const [query, setQuery] = useState('');
@@ -27,6 +29,7 @@ export default function SearchModal({ existingKeys, onAdd, onClose }) {
     setBusy(keyOf(r));
     try {
       await onAdd(await getDetails(r.media_type, r.tmdb_id));
+      if (r.providers) storeProviders(r.media_type, r.tmdb_id, r.providers);
       setAdded((s) => new Set(s).add(keyOf(r)));
     } catch (e) { setError(e.message); }
     setBusy(null);
@@ -72,6 +75,7 @@ export default function SearchModal({ existingKeys, onAdd, onClose }) {
                 {r.cast?.length > 0 && (
                   <p className="truncate text-xs text-mist/80">With {r.cast.join(', ')}</p>
                 )}
+                {r.providers && <div className="mt-1.5"><ProviderRow data={r.providers} small /></div>}
               </div>
               <button className="btn btn-primary !px-3.5 !py-2" disabled={have || busy === k} onClick={() => add(r)}>
                 {have ? 'On the list' : busy === k ? 'Adding…' : <><Plus size={16} /> Add</>}
