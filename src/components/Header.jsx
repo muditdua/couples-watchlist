@@ -1,6 +1,6 @@
-import { LogOut } from 'lucide-react';
+import { Avatar } from './Person';
 
-export default function Header({ total, toWatch, thisYear, name, onEditName, onSignOut }) {
+export default function Header({ total, toWatch, thisYear, me, onOpenSettings }) {
   const watched = total - toWatch;
   return (
     <header className="flex items-start justify-between gap-4 pt-[max(1.5rem,env(safe-area-inset-top))]">
@@ -10,10 +10,12 @@ export default function Header({ total, toWatch, thisYear, name, onEditName, onS
           {toWatch} to watch, {watched} watched{thisYear > 0 ? ` (${thisYear} this year)` : ''}
         </p>
       </div>
-      <div className="flex shrink-0 flex-col items-end gap-1.5">
-        <button onClick={onSignOut} className="btn btn-ghost !h-11 !w-11 !px-0" aria-label="Sign out"><LogOut size={16} /></button>
-        <button onClick={onEditName} className="max-w-[8rem] truncate text-xs text-mist underline-offset-4 hover:underline" title="Change your name">{name}</button>
-      </div>
+      <button
+        onClick={onOpenSettings} aria-label="Open settings" title="Settings"
+        className="shrink-0 rounded-full ring-2 ring-velvet transition hover:ring-blush"
+      >
+        <Avatar person={me} size={44} />
+      </button>
     </header>
   );
 }

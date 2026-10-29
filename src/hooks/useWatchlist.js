@@ -36,7 +36,7 @@ export function useWatchlist(who) {
   };
 
   const add = async (details) => {
-    const { error } = await supabase.from('movies').insert({ ...details, room: ROOM, added_by: who.name });
+    const { error } = await supabase.from('movies').insert({ ...details, room: ROOM, added_by: who.name, added_by_id: who.id });
     if (error && error.code !== '23505') throw error; // 23505 = already on the list
     await load();
   };

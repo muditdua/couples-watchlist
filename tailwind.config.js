@@ -7,7 +7,7 @@ export default {
         night: '#170d1a',   // page background
         plum: '#241529',    // cards
         velvet: '#33203a',  // raised surfaces / borders
-        blush: '#f0a8b8',   // primary accent
+        blush: 'rgb(var(--blush) / <alpha-value>)', // primary accent (changeable in Settings)
         ember: '#f4c98b',   // ratings, highlights
         mist: '#b9a6bd',    // secondary text
       },

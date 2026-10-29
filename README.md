@@ -75,3 +75,7 @@ Notes: sign-ups can stay switched off (the magic link never creates new accounts
 ## Upgrading an existing database
 
 If your table was created before "Added by", "Wanted by" and episode tracking, run `supabase-upgrade-v2.sql` once in the Supabase SQL Editor.
+
+## Settings page
+
+Tap your photo (top right) to open Settings: profile photo, name, name font and colour, your own accent colour, the tab and sort the list opens on, change password, and sign out. Profiles are stored in a `profiles` table, so run `supabase-upgrade-v3.sql` once in the Supabase SQL Editor before using it.

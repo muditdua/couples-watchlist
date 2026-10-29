@@ -3,12 +3,13 @@ import { posterUrl } from '../lib/tmdb';
 import { fmtRuntime } from '../lib/format';
 import { useProviders } from '../hooks/useProviders';
 import { ProviderRow } from './Providers';
+import { AddedBy } from './Person';
 import { FEATURES } from '../config';
 
 const shortDate = (iso) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
 
-export default function MovieCard({ movie, meId, onToggle, onLike, onRemove, onOpen }) {
+export default function MovieCard({ movie, meId, addedBy, onToggle, onLike, onRemove, onOpen }) {
   const poster = posterUrl(movie.poster_path);
   const isSeries = movie.media_type === 'tv';
   const providers = useProviders(movie.media_type, movie.tmdb_id, movie.tmdb_id > 0); // hand-added titles have no TMDB id
@@ -67,9 +68,9 @@ export default function MovieCard({ movie, meId, onToggle, onLike, onRemove, onO
         {FEATURES.episodeTracking && isSeries && epsWatched > 0 && (
           <p className="text-xs font-semibold text-ember">{epsWatched} {epsWatched === 1 ? 'episode' : 'episodes'} watched</p>
         )}
-        {movie.added_by && <p className="text-xs text-mist/80">Added by {movie.added_by}</p>}
         {movie.tmdb_id > 0 && <div className="pt-1"><ProviderRow data={providers} /></div>}
-        <div className="relative z-10 mt-auto flex gap-2 pt-3">
+        {addedBy && <div className="mt-auto pt-2"><AddedBy person={addedBy} /></div>}
+        <div className={`relative z-10 flex gap-2 pt-3 ${addedBy ? '' : 'mt-auto'}`}>
           <button onClick={() => onToggle(movie)} className="btn btn-ghost min-w-0 flex-1 !px-2 !py-2.5 !text-xs">
             <Check size={14} className="shrink-0" />
             <span className="truncate sm:hidden">{movie.watched ? 'Again' : 'Watched'}</span>

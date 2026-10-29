@@ -4,6 +4,7 @@ import Modal from './Modal';
 import { ProviderGroups } from './Providers';
 import { REGION_NAME, getDetails, getFullDetails, getSeason, posterUrl } from '../lib/tmdb';
 import { fmtRuntime } from '../lib/format';
+import { Avatar, PersonName } from './Person';
 import { FEATURES } from '../config';
 
 const fmtDate = (d) =>
@@ -116,7 +117,7 @@ function SimilarCard({ item, have, onAdd }) {
   );
 }
 
-export default function DetailModal({ movie, meId, existingKeys, actions, onRemove, onClose }) {
+export default function DetailModal({ movie, meId, people, existingKeys, actions, onRemove, onClose }) {
   const isSeries = movie.media_type === 'tv';
   const byHand = movie.tmdb_id < 0; // added manually, so nothing to look up on TMDB
   const tracking = FEATURES.episodeTracking && isSeries;
@@ -137,7 +138,8 @@ export default function DetailModal({ movie, meId, existingKeys, actions, onRemo
   const poster = posterUrl(movie.poster_path, 'w342');
   const director = d?.director || movie.director;
   const cast = d?.cast?.length ? d.cast : movie.cast_names ?? [];
-  const likers = Object.values(movie.likes ?? {});
+  const adder = people.adder(movie);
+  const likers = people.likers(movie);
   const iWant = Object.keys(movie.likes ?? {}).includes(meId);
   const watchedMap = movie.episodes_watched ?? {};
   const epsDone = Object.values(watchedMap).reduce((n, a) => n + a.length, 0);
@@ -179,8 +181,20 @@ export default function DetailModal({ movie, meId, existingKeys, actions, onRemo
             </button>
           </div>
           <div className="space-y-0.5 text-xs text-mist">
-            {movie.added_by && <p>Added by {movie.added_by}</p>}
-            {likers.length > 0 && <p>Wanted by {likers.join(' and ')}</p>}
+            {adder && (
+              <p className="flex items-center gap-2">
+                <Avatar person={adder} size={18} /> Added by <PersonName person={adder} />
+              </p>
+            )}
+            {likers.length > 0 && (
+              <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                {likers.map((p) => <Avatar key={p.id ?? p.name} person={p} size={18} />)}
+                Wanted by
+                {likers.map((p, i) => (
+                  <span key={p.id ?? p.name}><PersonName person={p} />{i < likers.length - 2 ? ',' : i === likers.length - 2 ? ' and' : ''}</span>
+                ))}
+              </p>
+            )}
           </div>
           {movie.watched && (
             <label className="flex flex-wrap items-center gap-2 text-xs text-mist">

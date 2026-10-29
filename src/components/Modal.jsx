@@ -22,7 +22,7 @@ export default function Modal({ title, onClose, children, wide = false }) {
             <X size={20} />
           </button>
         </div>
-        <div className="overflow-y-auto px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">{children}</div>
+        <div className="no-scrollbar overflow-y-auto px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">{children}</div>
       </div>
     </div>
   );
