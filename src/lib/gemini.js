@@ -1,8 +1,46 @@
 const KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const ENDPOINT =
-  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const PRIMARY = import.meta.env.VITE_GEMINI_MODEL || 'gemini-3.8-flash';
+// Tried in order if the first model is busy (duplicates are removed)
+const MODELS = [...new Set([PRIMARY, 'gemini-flash-latest', 'gemini-flash-lite-latest'])];
+const urlFor = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
 export const geminiEnabled = Boolean(KEY);
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const BUSY = new Set([429, 500, 502, 503, 504]);
+
+async function callModel(model, body) {
+  // up to 3 attempts per model, but each request gives up after 10 seconds
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 10000);
+    let res;
+    try {
+      res = await fetch(urlFor(model), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': KEY },
+        body: JSON.stringify(body),
+        signal: ctrl.signal,
+      });
+    } catch (e) {
+      clearTimeout(timer);
+      const timedOut = e.name === 'AbortError';
+      const err = new Error(timedOut ? '504 Gemini took too long to respond' : `Network error: ${e.message}`);
+      err.busy = timedOut; // a timeout moves on to the next model; a network error stops here
+      throw err;
+    }
+    clearTimeout(timer);
+    if (res.ok) return res.json();
+
+    let detail = '';
+    try { detail = (await res.json()).error?.message || ''; } catch { /* no body */ }
+    const err = new Error(`${res.status} ${detail}`.trim());
+    err.busy = BUSY.has(res.status);
+    if (!err.busy) throw err;
+    if (attempt < 2) await sleep(800 * 2 ** attempt);
+    else throw err;
+  }
+}
 
 export async function suggestWithGemini(movies, { minutes, vibe }) {
   const list = movies.map((m) => ({
@@ -15,20 +53,23 @@ export async function suggestWithGemini(movies, { minutes, vibe }) {
 Their unwatched watchlist (JSON): ${JSON.stringify(list)}
 Time available: ${minutes ? `${minutes} minutes (never suggest anything longer; for a series, one episode must fit)` : 'no limit'}.
 Mood they want: ${vibe || 'no preference'}.
-Pick up to 3 movies from the list that best fit. Use only ids from the list.
+Pick up to 3 that best fit. Use only ids from the list.
 Reply with only a JSON array: [{"id": "<id>", "reason": "<one short, warm sentence>"}]`;
 
-  const res = await fetch(ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': KEY },
-    body: JSON.stringify({
-      contents: [{ parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: 'application/json', thinkingConfig: { thinkingBudget: 0 } },
-    }),
-  });
-  if (!res.ok) throw new Error(`Gemini request failed (${res.status})`);
-  const data = await res.json();
-  const picks = JSON.parse(data.candidates[0].content.parts[0].text);
+  const body = {
+    contents: [{ parts: [{ text: prompt }] }],
+    generationConfig: { responseMimeType: 'application/json' },
+  };
+
+  let data, lastError;
+  for (const model of MODELS) {
+    try { data = await callModel(model, body); break; }
+    catch (e) { lastError = e; if (!e.busy) throw e; } // busy: move on to the next model
+  }
+  if (!data) throw lastError;
+
+  const text = data.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim();
+  const picks = JSON.parse(text);
   const byId = new Map(movies.map((m) => [m.id, m]));
   return picks
     .filter((p) => byId.has(p.id))

@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import Login from './components/Login';
 import { Plus, Sparkles } from 'lucide-react';
 import { supabase } from './lib/supabase';
 import { useWatchlist } from './hooks/useWatchlist';
@@ -11,20 +12,30 @@ import DecisionModal from './components/DecisionModal';
 import ConfirmDialog from './components/ConfirmDialog';
 
 export default function App() {
+  const [session, setSession] = useState(undefined); // undefined = still checking
+
+  useEffect(() => {
+    if (!supabase) return;
+    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
+    return () => subscription.unsubscribe();
+  }, []);
+
   if (!supabase) {
     return (
       <main className="mx-auto max-w-md px-6 py-20">
         <h1 className="font-display text-3xl font-semibold">Almost ready</h1>
         <p className="mt-3 text-mist">
-          Add <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> to <code>.env.local</code>, then restart the dev server. See the README.
+          Add <code>VITE_SUPABASE_URL</code> and <code>VITE_SUPABASE_ANON_KEY</code> to <code>.env.local</code>, then restart the dev server.
         </p>
       </main>
     );
   }
-  return <div> <Watchlist /> <Analytics /></div>;
+  if (session === undefined) return null;
+  return session ? <Watchlist onSignOut={() => supabase.auth.signOut()} /> : <Login />;
 }
 
-function Watchlist() {
+function Watchlist({ onSignOut }) {
   const { movies, loading, error, add, toggleWatched, remove } = useWatchlist();
   const [status, setStatus] = useState('to-watch');
   const [type, setType] = useState('all');
@@ -57,7 +68,7 @@ function Watchlist() {
 
   return (
     <div className="mx-auto max-w-5xl space-y-5 px-4 pb-32">
-      <Header total={movies.length} toWatch={toWatch} />
+      <Header total={movies.length} toWatch={toWatch} onSignOut={onSignOut} />
       <Filters {...{ query, setQuery, status, setStatus, type, setType, genre, setGenre, genres, sort, setSort }} />
       {error && <p className="rounded-xl bg-red-950/60 p-3 text-sm text-red-200">Couldn't sync: {error}</p>}
 
