@@ -14,24 +14,43 @@ export default function DecisionModal({ movies, onClose }) {
   const [picks, setPicks] = useState(null);
   const [loading, setLoading] = useState(false);
   const [note, setNote] = useState('');
-
-  const pool = movies.filter((m) => !m.watched);
+  const [type, setType] = useState('all');
+  const pool = movies.filter((m) => !m.watched && (type === 'all' || m.media_type === type));
 
   const decide = async () => {
-    setLoading(true); setNote('');
-    const input = { minutes, vibe };
-    try {
-      if (!geminiEnabled) throw new Error('no-key');
-      setPicks(await suggestWithGemini(pool, input));
-    } catch (e) {
-      if (e.message !== 'no-key') setNote('Gemini was unavailable, so these come from simple filters.');
-      setPicks(suggestLocally(pool, input));
+  setLoading(true); setNote('');
+  const input = { minutes, vibe };
+  try {
+    if (!geminiEnabled) throw new Error('no-key');
+    const result = await suggestWithGemini(pool, input);
+    setPicks(result.length ? result : suggestLocally(pool, input));
+  } catch (e) {
+    if (e.message !== 'no-key') {
+      console.error('Gemini error:', e);
+      setNote(
+        /^(429|5\d\d)/.test(e.message)
+          ? 'Gemini is busy right now, so these come from a simple filter. Try again in a minute for smarter picks.'
+          : `Gemini failed (${e.message.slice(0, 140)}). Showing simple filter results instead.`
+      );
     }
+    setPicks(suggestLocally(pool, input));
+  } finally {
     setLoading(false);
-  };
+  }
+};
 
   return (
     <Modal title="What should we watch?" onClose={onClose}>
+      <p className="mb-2 text-sm text-mist">What are you in the mood to watch?</p>
+      <div className="mb-5 flex rounded-full bg-plum p-1" role="tablist">
+        {[['all', 'Everything'], ['movie', 'Movies'], ['tv', 'Series']].map(([v, label]) => (
+          <button
+            key={v} role="tab" aria-selected={type === v}
+            onClick={() => { setType(v); setPicks(null); }}
+            className={`flex-1 rounded-full px-4 py-2 text-sm font-semibold transition ${type === v ? 'bg-velvet text-blush' : 'text-mist'}`}
+          >{label}</button>
+        ))}
+      </div>
       <p className="mb-2 text-sm text-mist">How much time do you have?</p>
       <div className="flex flex-wrap gap-2">
         {TIMES.map(([v, label]) => (
@@ -51,7 +70,13 @@ export default function DecisionModal({ movies, onClose }) {
       <button className="btn btn-primary mt-6 w-full" onClick={decide} disabled={loading || !pool.length}>
         <Sparkles size={16} /> {loading ? 'Picking…' : 'Pick our top 3'}
       </button>
-      {!pool.length && <p className="mt-3 text-sm text-mist">Add a few movies or series to your "To watch" list first.</p>}
+      {!pool.length && (
+        <p className="mt-3 text-sm text-mist">
+          {type === 'all'
+            ? 'Add a few movies or series to your "To watch" list first.'
+            : `You have no ${type === 'tv' ? 'series' : 'movies'} left in "To watch".`}
+        </p>
+      )}
       {note && <p className="mt-3 text-sm text-mist">{note}</p>}
 
       {picks && (
