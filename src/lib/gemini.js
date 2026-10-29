@@ -1,8 +1,6 @@
 const KEY = import.meta.env.VITE_GEMINI_API_KEY;
-const PRIMARY = import.meta.env.VITE_GEMINI_MODEL || 'gemini-3.8-flash';
-const urlFor = (model) => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
-// Tried in order if the first model is busy (duplicates are removed)
-const MODELS = [...new Set([PRIMARY, 'gemini-flash-latest', 'gemini-flash-lite-latest'])];
+const ENDPOINT =
+  'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 export const geminiEnabled = Boolean(KEY);
 
