@@ -1,8 +1,10 @@
 import { useEffect } from 'react';
 import { Trash2 } from 'lucide-react';
 import { posterUrl } from '../lib/tmdb';
+import { useScrollLock } from '../hooks/useScrollLock';
 
 export default function ConfirmDialog({ movie, onConfirm, onCancel }) {
+  useScrollLock();
   useEffect(() => {
     const onKey = (e) => e.key === 'Escape' && onCancel();
     window.addEventListener('keydown', onKey);

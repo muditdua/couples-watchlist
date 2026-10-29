@@ -237,7 +237,7 @@ function Watchlist({ user, onSignOut }) {
         </div>
       )}
 
-      <nav className="pointer-events-none fixed inset-x-0 bottom-0 flex justify-center gap-3 bg-gradient-to-t from-night via-night/90 to-transparent px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-8">
+      <nav className="pointer-events-none fixed inset-x-0 bottom-0 z-20 flex justify-center gap-3 bg-gradient-to-t from-night via-night/90 to-transparent px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-8">
         <button onClick={() => setModal('decide')} className="btn btn-ghost pointer-events-auto flex-1 !px-4 !py-3.5 shadow-xl shadow-black/40 sm:flex-none sm:!px-5">
           <Sparkles size={18} /> Help us decide
         </button>
