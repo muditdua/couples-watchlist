@@ -63,7 +63,6 @@ export default function ProfilePage({ person, isMe, meId, movies, onBack, onOpen
           </button>
         ) : <Avatar person={person} size={112} />}
         <h1 className="mt-4 text-3xl leading-tight"><PersonName person={person} /></h1>
-        {isMe && <p className="mt-1 text-sm text-mist">This is how your partner sees you</p>}
         {person.bio && <p className="mt-3 max-w-md whitespace-pre-wrap break-words text-sm leading-relaxed text-stone-200">{person.bio}</p>}
         {topGenres.length > 0 && (
           <p className="mt-3 flex flex-wrap justify-center gap-2">
