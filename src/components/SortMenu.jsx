@@ -7,6 +7,7 @@ const OPTIONS = [
   ['alpha', 'A to Z'],
   ['newest', 'Recently added'],
   ['likes', 'Most wanted'],
+  ['watched', 'Recently watched'],
 ];
 
 export default function SortMenu({ value, onChange }) {

@@ -6,3 +6,4 @@ alter table public.movies add column if not exists planned_time text;           
 alter table public.movies add column if not exists notes jsonb not null default '[]'::jsonb;   -- notes on a title
 alter table if exists public.profiles add column if not exists bio text;
 alter table if exists public.profiles add column if not exists avatar_src text;                -- bigger original, so the photo can be re-adjusted
+alter table if exists public.profiles add column if not exists avatar_large text;               -- sharper copy shown when a photo is enlarged

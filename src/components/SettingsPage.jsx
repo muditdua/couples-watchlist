@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { ArrowLeft, Camera, Check, Download, LogOut, Upload } from 'lucide-react';
 import { AddedBy, Avatar } from './Person';
 import PhotoCropper from './PhotoCropper';
+import PhotoViewer from './PhotoViewer';
 import { ACCENTS, FONTS, NAME_COLORS, applyAccent, photoToSource } from '../lib/customize';
 import { downloadBackup, downloadCsv, parseBackup } from '../lib/backup';
 import { FEATURES } from '../config';
@@ -43,6 +44,8 @@ export default function SettingsPage({ user, me, profile, movies, prefs, onSaveP
   const [name, setName] = useState(me.name);
   const [avatar, setAvatar] = useState(savedAvatar);
   const [bio, setBio] = useState(savedBio);
+  const [avatarLarge, setAvatarLarge] = useState(null); // sharper copy, shown when the photo is enlarged
+  const [viewing, setViewing] = useState(false);
   const [avatarSrc, setAvatarSrc] = useState(null); // the larger original, kept so the photo can be re-adjusted
   const [crop, setCrop] = useState(null); // photo currently open in the cropper
   const [restore, setRestore] = useState(null);
@@ -94,7 +97,10 @@ export default function SettingsPage({ user, me, profile, movies, prefs, onSaveP
     setSaving(true); setMsg({ text: '', bad: false });
     try {
       const fields = { name: name.trim(), bio: bio.trim(), avatar, name_font: font, name_color: color };
-      if (avatar !== savedAvatar) fields.avatar_src = avatar ? avatarSrc : null;
+      if (avatar !== savedAvatar) {
+        fields.avatar_src = avatar ? avatarSrc : null;
+        fields.avatar_large = avatar ? avatarLarge : null;
+      }
       await onSave(fields);
       setMsg({ text: 'Saved. Your partner will see this too.', bad: false });
     } catch {
@@ -128,7 +134,11 @@ export default function SettingsPage({ user, me, profile, movies, prefs, onSaveP
 
       <Section title="Your profile" hint="This is how you show up on the titles you add and want.">
         <div className="flex items-center gap-4">
-          <Avatar person={preview} size={80} />
+          {avatar ? (
+            <button onClick={() => setViewing(true)} aria-label="View photo larger" title="View larger" className="rounded-full ring-2 ring-transparent transition hover:ring-blush">
+              <Avatar person={preview} size={80} />
+            </button>
+          ) : <Avatar person={preview} size={80} />}
           <div className="flex flex-wrap gap-2">
             <button onClick={() => fileRef.current?.click()} className="btn btn-ghost !py-2.5"><Camera size={16} /> {avatar ? 'Change photo' : 'Add a photo'}</button>
             {avatar && <button onClick={adjustPhoto} className="btn btn-ghost !py-2.5">Adjust</button>}
@@ -250,10 +260,12 @@ export default function SettingsPage({ user, me, profile, movies, prefs, onSaveP
         <button onClick={onSignOut} className="btn btn-ghost mt-6 w-full !py-3"><LogOut size={16} /> Sign out</button>
       </Section>
 
+      {viewing && avatar && <PhotoViewer person={{ ...preview, id: user.id }} large={avatarLarge} onClose={() => setViewing(false)} />}
+
       {crop && (
         <PhotoCropper
           src={crop} onCancel={() => setCrop(null)}
-          onDone={(url) => { setAvatar(url); setAvatarSrc(crop); setCrop(null); setMsg({ text: '', bad: false }); }}
+          onDone={({ small, large }) => { setAvatar(small); setAvatarLarge(large); setAvatarSrc(crop); setCrop(null); setMsg({ text: '', bad: false }); }}
         />
       )}
     </div>

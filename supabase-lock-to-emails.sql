@@ -8,8 +8,8 @@
 create table if not exists public.allowed_emails (email text primary key);
 
 insert into public.allowed_emails (email) values
-  ('muditdua2007@gmail.com'),
-  ('naina06m@gmail.com')
+  ('your-email@example.com'),
+  ('her-email@example.com')
 on conflict do nothing;
 
 -- No policies on this table: nobody can read or change it through the app.

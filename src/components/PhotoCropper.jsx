@@ -4,7 +4,8 @@ import Modal from './Modal';
 
 const VIEW = 260;   // px, the square area you drag inside
 const CIRCLE = 224; // px, the circle that becomes your profile photo
-const OUT = 160;    // saved photo size in px
+const OUT = 160;    // small photo used in lists, in px
+const OUT_LARGE = 320; // sharper copy used when a photo is enlarged
 
 // Drag to move, pinch or slide to zoom. What is inside the circle is what gets saved.
 export default function PhotoCropper({ src, onCancel, onDone }) {
@@ -55,13 +56,16 @@ export default function PhotoCropper({ src, onCancel, onDone }) {
   const up = (e) => { pointers.current.delete(e.pointerId); pinch.current = null; };
 
   const finish = () => {
-    const canvas = document.createElement('canvas');
-    canvas.width = OUT; canvas.height = OUT;
+    const big = document.createElement('canvas');
+    big.width = OUT_LARGE; big.height = OUT_LARGE;
     const size = CIRCLE / scale; // how much of the original fits inside the circle
     const sx = nat.w / 2 - pos.x / scale - size / 2;
     const sy = nat.h / 2 - pos.y / scale - size / 2;
-    canvas.getContext('2d').drawImage(imgRef.current, sx, sy, size, size, 0, 0, OUT, OUT);
-    onDone(canvas.toDataURL('image/jpeg', 0.88));
+    big.getContext('2d').drawImage(imgRef.current, sx, sy, size, size, 0, 0, OUT_LARGE, OUT_LARGE);
+    const small = document.createElement('canvas');
+    small.width = OUT; small.height = OUT;
+    small.getContext('2d').drawImage(big, 0, 0, OUT, OUT);
+    onDone({ small: small.toDataURL('image/jpeg', 0.88), large: big.toDataURL('image/jpeg', 0.85) });
   };
 
   return (

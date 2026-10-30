@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { ArrowLeft, Check, Settings } from 'lucide-react';
 import { Avatar, PersonName } from './Person';
 import { posterUrl } from '../lib/tmdb';
+import PhotoViewer from './PhotoViewer';
 
 function Tile({ movie, onOpen }) {
   const poster = posterUrl(movie.poster_path, 'w342');
@@ -29,6 +30,7 @@ const byNewest = (a, b) => new Date(b.created_at) - new Date(a.created_at);
 
 export default function ProfilePage({ person, isMe, meId, movies, onBack, onOpenTitle, onOpenSettings }) {
   const [tab, setTab] = useState('added');
+  const [viewing, setViewing] = useState(false);
 
   const added = useMemo(
     () => movies.filter((m) => (m.added_by_id ? m.added_by_id === person.id : m.added_by === person.name)).sort(byNewest),
@@ -55,7 +57,11 @@ export default function ProfilePage({ person, isMe, meId, movies, onBack, onOpen
       </header>
 
       <section className="flex flex-col items-center text-center">
-        <Avatar person={person} size={112} />
+        {person.avatar ? (
+          <button onClick={() => setViewing(true)} aria-label="View photo larger" title="View larger" className="rounded-full ring-2 ring-transparent transition hover:ring-blush">
+            <Avatar person={person} size={112} />
+          </button>
+        ) : <Avatar person={person} size={112} />}
         <h1 className="mt-4 text-3xl leading-tight"><PersonName person={person} /></h1>
         {isMe && <p className="mt-1 text-sm text-mist">This is how your partner sees you</p>}
         {person.bio && <p className="mt-3 max-w-md whitespace-pre-wrap break-words text-sm leading-relaxed text-stone-200">{person.bio}</p>}
@@ -93,6 +99,7 @@ export default function ProfilePage({ person, isMe, meId, movies, onBack, onOpen
           {tab === 'added' ? `${isMe ? 'You haven' : `${person.name} hasn`}'t added anything yet.` : 'Nothing marked as wanted yet.'}
         </p>
       )}
+      {viewing && <PhotoViewer person={person} onClose={() => setViewing(false)} />}
     </div>
   );
 }
