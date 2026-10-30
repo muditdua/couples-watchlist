@@ -63,7 +63,7 @@ export default function MovieCard({ movie, meId, addedBy, mine, onToggle, onLike
       </div>
       <div className="flex flex-1 flex-col gap-1.5 p-3">
         {/* The title button stretches over the whole card, so tapping anywhere opens the details */}
-        <h3 className="font-display text-lg font-semibold leading-snug">
+        <h3 className="break-words font-display text-base font-semibold leading-snug sm:text-lg">
           <button
             onClick={() => onOpen(movie)}
             className="text-left after:absolute after:inset-0 after:content-['']"
@@ -90,11 +90,11 @@ export default function MovieCard({ movie, meId, addedBy, mine, onToggle, onLike
         )}
         {movie.tmdb_id > 0 && <div className="pt-1"><ProviderRow data={providers} mine={mine} /></div>}
         {addedBy && <div className="mt-auto pt-2"><AddedBy person={addedBy} onOpen={onOpenProfile ? () => onOpenProfile(addedBy.id) : undefined} /></div>}
-        <div className={`relative z-10 flex gap-2 pt-3 ${addedBy ? '' : 'mt-auto'}`}>
-          <button onClick={() => onToggle(movie)} className="btn btn-ghost min-w-0 flex-1 !px-2 !py-2.5 !text-xs">
+        {/* Phones: "Mark watched" gets its own full-width row, with the heart and bin side by side under it */}
+        <div className={`relative z-10 grid grid-cols-2 gap-2 pt-3 sm:flex ${addedBy ? '' : 'mt-auto'}`}>
+          <button onClick={() => onToggle(movie)} className="btn btn-ghost col-span-2 min-w-0 !px-2 !py-2.5 !text-xs sm:flex-1">
             <Check size={14} className="shrink-0" />
-            <span className="truncate sm:hidden">{movie.watched ? 'Again' : 'Watched'}</span>
-            <span className="hidden truncate sm:inline">{movie.watched ? 'Watch again' : 'Mark watched'}</span>
+            <span className="truncate">{movie.watched ? 'Watch again' : 'Mark watched'}</span>
           </button>
           <button
             onClick={() => onLike(movie)} aria-pressed={iWant}
@@ -106,7 +106,7 @@ export default function MovieCard({ movie, meId, addedBy, mine, onToggle, onLike
           </button>
           <button
             onClick={() => onRemove(movie)}
-            aria-label={`Remove ${movie.title}`} className="btn btn-ghost hidden !px-3 !py-2.5 text-mist sm:inline-flex"
+            aria-label={`Remove ${movie.title}`} className="btn btn-ghost shrink-0 !px-3 !py-2.5 text-mist"
           ><Trash2 size={14} /></button>
         </div>
       </div>
