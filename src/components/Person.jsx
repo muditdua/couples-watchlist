@@ -30,14 +30,22 @@ export function PersonName({ person, className = '' }) {
   );
 }
 
-export function AddedBy({ person }) {
+// Tap the name to open that person's profile (needs person.id and onOpen)
+export function AddedBy({ person, onOpen }) {
   if (!person?.name) return null;
-  return (
-    <p className="flex items-center gap-2 border-t border-velvet pt-2.5 text-xs text-mist">
+  const inner = (
+    <>
       <Avatar person={person} />
       <span className="min-w-0 truncate">
         Added by <PersonName person={person} className={person.name_color ? '' : 'text-stone-200'} />
       </span>
-    </p>
+    </>
+  );
+  return (
+    <div className="border-t border-velvet pt-2.5 text-xs text-mist">
+      {onOpen && person.id ? (
+        <button onClick={onOpen} className="relative z-10 flex max-w-full items-center gap-2 rounded-full text-left hover:underline">{inner}</button>
+      ) : <p className="flex items-center gap-2">{inner}</p>}
+    </div>
   );
 }

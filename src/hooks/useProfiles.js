@@ -8,7 +8,7 @@ export function useProfiles(user) {
   const [ready, setReady] = useState(false);
 
   const load = useCallback(async () => {
-    const { data, error } = await supabase.from('profiles').select('*');
+    const { data, error } = await supabase.from('profiles').select('id,name,avatar,name_font,name_color,accent,bio,updated_at');
     if (!error) setProfiles(data);
     setReady(true);
   }, []);

@@ -64,3 +64,16 @@ exception when duplicate_object then null; end $$;
 
 -- Lets "Added by" follow your current name and photo
 alter table public.movies add column if not exists added_by_id uuid;
+
+-- ===== Watching status, Plan a night, Notes, bio =====
+alter table public.movies add column if not exists season_counts jsonb;                        -- episodes per season, for "Next up"
+alter table public.movies add column if not exists planned_on date;                            -- Plan a night: date
+alter table public.movies add column if not exists planned_time text;                          -- Plan a night: time (optional)
+alter table public.movies add column if not exists notes jsonb not null default '[]'::jsonb;   -- notes on a title
+alter table if exists public.profiles add column if not exists bio text;
+alter table if exists public.profiles add column if not exists avatar_src text;                -- bigger original, so the photo can be re-adjusted
+
+-- ===== Added by, wants, episode progress (also in supabase-upgrade-v2.sql) =====
+alter table public.movies add column if not exists added_by text;
+alter table public.movies add column if not exists likes jsonb not null default '{}'::jsonb;
+alter table public.movies add column if not exists episodes_watched jsonb not null default '{}'::jsonb;

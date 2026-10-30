@@ -79,3 +79,17 @@ If your table was created before "Added by", "Wanted by" and episode tracking, r
 ## Settings page
 
 Tap your photo (top right) to open Settings: profile photo, name, name font and colour, your own accent colour, the tab and sort the list opens on, change password, and sign out. Profiles are stored in a `profiles` table, so run `supabase-upgrade-v3.sql` once in the Supabase SQL Editor before using it.
+
+## Profiles, watching, plans, notes, trailers, backup
+
+- Tap either face at the top of the list (or anyone's name under "Added by") to open their profile page: photo, about line, stats and everything they added or want.
+- Series you've started (some episodes ticked) move to the **Watching** tab and show "Next up". Turn this off with `episodeTracking: false` in `src/config.js`.
+- **Plan a night** (in a title's details) puts a date on a title, shows a "Next movie night" banner, and can add it to your phone's calendar.
+- Tap a title's poster in its details to watch the trailer.
+- Settings > **Backup and export** downloads everything as a file (or a CSV) and can restore it.
+
+Run these once in the Supabase SQL Editor, in order: `supabase-upgrade-v2.sql`, `supabase-upgrade-v3.sql`, `supabase-upgrade-v4.sql`. Then, to restrict the database to just you two, edit the two emails in `supabase-lock-to-emails.sql` and run it.
+
+## Staying signed in
+
+The login is saved in the browser and renewed automatically. If you still get signed out after restarting your computer, your browser is clearing the site's data on exit. In Brave: Settings > Cookies and other site data (or Privacy and security) > turn off "Clear cookies and site data when you close all windows", and add your site address to "Sites that can always use cookies".

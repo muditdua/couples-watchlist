@@ -1,7 +1,13 @@
 import { Search, X } from 'lucide-react';
 import SortMenu from './SortMenu';
+import { FEATURES } from '../config';
 
-const STATUS = [['to-watch', 'To watch'], ['watched', 'Watched'], ['all', 'All']];
+const STATUS = [
+  ['to-watch', 'To watch'],
+  ...(FEATURES.episodeTracking ? [['watching', 'Watching']] : []),
+  ['watched', 'Watched'],
+  ['all', 'All'],
+];
 const TYPES = [['all', 'Everything', 'All'], ['movie', 'Movies', 'Movies'], ['tv', 'Series', 'Series']];
 
 export default function Filters({
@@ -24,11 +30,11 @@ export default function Filters({
       </div>
 
       {/* Full-width tabs on phones so nothing overflows; compact from sm up */}
-      <div className="grid grid-cols-3 rounded-full bg-plum p-1 sm:w-fit" role="tablist" aria-label="Status">
+      <div className={`grid ${STATUS.length === 4 ? 'grid-cols-4' : 'grid-cols-3'} rounded-full bg-plum p-1 sm:w-fit`} role="tablist" aria-label="Status">
         {STATUS.map(([v, label]) => (
           <button
             key={v} role="tab" aria-selected={status === v} onClick={() => setStatus(v)}
-            className={`rounded-full px-4 py-2.5 text-sm font-semibold transition ${status === v ? 'bg-blush text-night' : 'text-mist'}`}
+            className={`rounded-full px-2 py-2.5 text-sm font-semibold transition sm:px-4 ${status === v ? 'bg-blush text-night' : 'text-mist'}`}
           >{label}</button>
         ))}
       </div>

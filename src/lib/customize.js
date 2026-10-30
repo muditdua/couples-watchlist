@@ -31,12 +31,12 @@ export function applyAccent(id) {
 const AUTO = ['#f0a8b8', '#f4c98b', '#a9c7f0', '#b5dcc0', '#d3b4f0'];
 export const autoColor = (name = '') => AUTO[[...name].reduce((n, c) => n + c.charCodeAt(0), 0) % AUTO.length];
 
-// Centre-crops a picked photo to a small square JPEG (data URL, roughly 6-12 KB)
-export async function photoToAvatar(file, size = 128) {
+// Shrinks a picked photo so the cropper stays fast; also kept so the photo can be re-adjusted later
+export async function photoToSource(file, max = 640) {
   const bmp = await createImageBitmap(file);
-  const side = Math.min(bmp.width, bmp.height);
+  const k = Math.min(1, max / Math.max(bmp.width, bmp.height));
   const canvas = document.createElement('canvas');
-  canvas.width = size; canvas.height = size;
-  canvas.getContext('2d').drawImage(bmp, (bmp.width - side) / 2, (bmp.height - side) / 2, side, side, 0, 0, size, size);
+  canvas.width = Math.round(bmp.width * k); canvas.height = Math.round(bmp.height * k);
+  canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
   return canvas.toDataURL('image/jpeg', 0.85);
 }

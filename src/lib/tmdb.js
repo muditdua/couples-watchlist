@@ -42,6 +42,13 @@ export function pickProviders(wp) {
   return { link: r.link ?? null, stream, free, rent };
 }
 
+// Best YouTube trailer: official trailer first, then any trailer, then a teaser
+function pickTrailer(videos = []) {
+  const yt = videos.filter((v) => v.site === 'YouTube');
+  const best = yt.find((v) => v.type === 'Trailer' && v.official) || yt.find((v) => v.type === 'Trailer') || yt.find((v) => v.type === 'Teaser');
+  return best ? { key: best.key, name: best.name } : null;
+}
+
 export async function getProviders(mediaType, tmdbId) {
   return pickProviders(await get(`/${mediaType}/${tmdbId}/watch/providers`));
 }
@@ -50,7 +57,7 @@ export const logoUrl = (path) => (path ? `https://image.tmdb.org/t/p/w92${path}`
 
 // ---------- Detail pane ----------
 export async function getFullDetails(mediaType, tmdbId) {
-  const d = await get(`/${mediaType}/${tmdbId}`, { append_to_response: 'credits,watch/providers,recommendations' });
+  const d = await get(`/${mediaType}/${tmdbId}`, { append_to_response: 'credits,watch/providers,recommendations,videos', include_video_language: 'en,hi,null' });
   return {
     overview: d.overview || '',
     tagline: d.tagline || '',
@@ -59,6 +66,7 @@ export async function getFullDetails(mediaType, tmdbId) {
       ? (d.created_by ?? []).map((c) => c.name).join(', ') || null
       : d.credits?.crew?.find((c) => c.job === 'Director')?.name ?? null,
     providers: pickProviders(d['watch/providers']),
+    trailer: pickTrailer(d.videos?.results),
     status: d.status || '',
     similar: (d.recommendations?.results ?? [])
       .filter((r) => r.poster_path)
@@ -159,6 +167,9 @@ export async function getDetails(mediaType, tmdbId) {
       year: yearOf(d.first_air_date),
       runtime: d.episode_run_time?.[0] || d.last_episode_to_air?.runtime || null, // minutes per episode
       seasons: d.number_of_seasons ?? null,
+      season_counts: Object.fromEntries(
+        (d.seasons ?? []).filter((s) => s.season_number > 0 && s.episode_count > 0).map((s) => [s.season_number, s.episode_count])
+      ),
       director: d.created_by?.[0]?.name ?? null, // shown as "Created by"
     };
   }

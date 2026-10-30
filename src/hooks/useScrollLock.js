@@ -14,7 +14,7 @@ export function useScrollLock() {
       b.position = 'fixed';
       b.top = `-${y}px`;
       b.width = '100%';
-      if (gap > 0) b.paddingRight = `${gap}px`;
+      if (gap > 0) b.paddingRight = `${gap}px`; // stops the page shifting sideways when the scroll bar disappears
     }
     locks += 1;
     return () => {

@@ -1,22 +1,33 @@
-import { Check, Heart, Star, Trash2 } from 'lucide-react';
+import { CalendarDays, Check, Heart, MessageSquare, Star, Trash2 } from 'lucide-react';
 import { posterUrl } from '../lib/tmdb';
 import { fmtRuntime } from '../lib/format';
 import { useProviders } from '../hooks/useProviders';
 import { ProviderRow } from './Providers';
 import { AddedBy } from './Person';
 import { FEATURES } from '../config';
+import { epsWatched as epsWatchedCount, hasCounts, isWatching, nextUpFromCounts } from '../lib/status';
+import { fmtTime, planLabel } from '../lib/plan';
 
 const shortDate = (iso) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
 
-export default function MovieCard({ movie, meId, addedBy, onToggle, onLike, onRemove, onOpen }) {
+export default function MovieCard({ movie, meId, addedBy, onToggle, onLike, onRemove, onOpen, onOpenProfile }) {
   const poster = posterUrl(movie.poster_path);
   const isSeries = movie.media_type === 'tv';
   const providers = useProviders(movie.media_type, movie.tmdb_id, movie.tmdb_id > 0); // hand-added titles have no TMDB id
   const likes = Object.keys(movie.likes ?? {});
   const iWant = likes.includes(meId);
   const bothWant = likes.length >= 2;
-  const epsWatched = Object.values(movie.episodes_watched ?? {}).reduce((n, a) => n + a.length, 0);
+  const eps = epsWatchedCount(movie);
+  const watching = isWatching(movie);
+  const next = FEATURES.episodeTracking && isSeries && eps > 0 ? nextUpFromCounts(movie.season_counts, movie.episodes_watched) : null;
+  const watchingLine = FEATURES.episodeTracking && isSeries && eps > 0 && !movie.watched
+    ? (next ? `Next up: S${next.season} E${next.episode}`
+      : hasCounts(movie.season_counts) ? 'All episodes watched'
+      : `${eps} ${eps === 1 ? 'episode' : 'episodes'} watched`)
+    : null;
+  const plan = !movie.watched ? planLabel(movie.planned_on) : null;
+  const notes = movie.notes?.length ?? 0;
   const people = [
     movie.director && `${isSeries ? 'Created by' : 'Dir.'} ${movie.director}`,
     movie.cast_names?.slice(0, 2).join(', '),
@@ -40,6 +51,9 @@ export default function MovieCard({ movie, meId, addedBy, onToggle, onLike, onRe
           <span className="absolute bottom-2 left-2 rounded-full bg-blush px-2.5 py-1 text-xs font-semibold text-night">
             Watched{movie.watched_at ? ` ${shortDate(movie.watched_at)}` : ''}
           </span>
+        )}
+        {watching && (
+          <span className="absolute bottom-2 left-2 rounded-full bg-ember px-2.5 py-1 text-xs font-semibold text-night">Watching</span>
         )}
         {bothWant && !movie.watched && (
           <span className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-blush px-2.5 py-1 text-xs font-semibold text-night">
@@ -65,11 +79,17 @@ export default function MovieCard({ movie, meId, addedBy, onToggle, onLike, onRe
         </div>
         {movie.genres?.length > 0 && <p className="text-sm text-blush">{movie.genres.slice(0, 3).join(', ')}</p>}
         {people.map((p) => <p key={p} className="text-xs text-mist">{p}</p>)}
-        {FEATURES.episodeTracking && isSeries && epsWatched > 0 && (
-          <p className="text-xs font-semibold text-ember">{epsWatched} {epsWatched === 1 ? 'episode' : 'episodes'} watched</p>
+        {watchingLine && <p className="text-xs font-semibold text-ember">{watchingLine}</p>}
+        {plan && (
+          <p className="flex items-center gap-1.5 text-xs font-semibold text-ember">
+            <CalendarDays size={13} /> {plan}{movie.planned_time ? `, ${fmtTime(movie.planned_time)}` : ''}
+          </p>
+        )}
+        {notes > 0 && (
+          <p className="flex items-center gap-1.5 text-xs text-mist"><MessageSquare size={13} /> {notes} {notes === 1 ? 'note' : 'notes'}</p>
         )}
         {movie.tmdb_id > 0 && <div className="pt-1"><ProviderRow data={providers} /></div>}
-        {addedBy && <div className="mt-auto pt-2"><AddedBy person={addedBy} /></div>}
+        {addedBy && <div className="mt-auto pt-2"><AddedBy person={addedBy} onOpen={onOpenProfile ? () => onOpenProfile(addedBy.id) : undefined} /></div>}
         <div className={`relative z-10 flex gap-2 pt-3 ${addedBy ? '' : 'mt-auto'}`}>
           <button onClick={() => onToggle(movie)} className="btn btn-ghost min-w-0 flex-1 !px-2 !py-2.5 !text-xs">
             <Check size={14} className="shrink-0" />

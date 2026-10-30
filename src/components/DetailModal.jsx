@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
-import { Check, ChevronDown, Heart, Plus, Star, Trash2 } from 'lucide-react';
+import { CalendarPlus, Check, ChevronDown, Heart, Play, Plus, Star, Trash2 } from 'lucide-react';
 import Modal from './Modal';
 import { ProviderGroups } from './Providers';
 import { REGION_NAME, getDetails, getFullDetails, getSeason, posterUrl } from '../lib/tmdb';
 import { fmtRuntime } from '../lib/format';
 import { Avatar, PersonName } from './Person';
 import { FEATURES } from '../config';
+import { EpisodeSkeleton, Lines } from './Skeleton';
+import { countdown, fmtPlanDate, fmtTime } from '../lib/plan';
+import { downloadCalendarEvent } from '../lib/calendar';
 
 const fmtDate = (d) =>
   d ? new Date(d).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : '';
@@ -57,7 +60,7 @@ function Season({ tvId, season, open, onToggle, tracking, watched, onEpisode, on
               </button>
             </div>
           )}
-          {state.loading && <p className="p-4 text-sm text-mist">Loading episodes…</p>}
+          {state.loading && <EpisodeSkeleton />}
           {state.error && <p className="p-4 text-sm text-red-300">{state.error}</p>}
           <ol>
             {state.list?.map((e) => {
@@ -94,6 +97,58 @@ function Season({ tvId, season, open, onToggle, tracking, watched, onEpisode, on
   );
 }
 
+function PersonLink({ person, onOpen, children }) {
+  if (!person.id) return <span className="inline-flex items-center gap-2">{children}</span>;
+  return (
+    <button onClick={() => onOpen(person)} className="inline-flex items-center gap-2 rounded-full hover:underline">
+      {children}
+    </button>
+  );
+}
+
+function Notes({ notes, people, meId, onAdd, onRemove }) {
+  const [text, setText] = useState('');
+  const submit = (e) => {
+    e.preventDefault();
+    if (!text.trim()) return;
+    onAdd(text);
+    setText('');
+  };
+  return (
+    <section className="mt-6">
+      <h3 className="mb-2 font-display text-lg font-semibold">Notes</h3>
+      {notes.length > 0 && (
+        <ul className="mb-3 space-y-2">
+          {notes.map((n) => {
+            const p = people.byId(n.by_id, n.by);
+            return (
+              <li key={n.id} className="flex gap-3 rounded-2xl bg-plum p-3">
+                <Avatar person={p} size={28} />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs text-mist"><PersonName person={p} />, {fmtDate(n.at)}</p>
+                  <p className="mt-0.5 whitespace-pre-wrap break-words text-sm">{n.text}</p>
+                </div>
+                {n.by_id === meId && (
+                  <button onClick={() => onRemove(n.id)} aria-label="Delete note" className="self-start rounded-full p-2 text-mist hover:bg-velvet">
+                    <Trash2 size={14} />
+                  </button>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      <form onSubmit={submit} className="flex gap-2">
+        <input
+          className="input !py-2.5" value={text} onChange={(e) => setText(e.target.value)} maxLength={280}
+          placeholder="Add a note, like who recommended it" aria-label="Add a note"
+        />
+        <button className="btn btn-primary shrink-0 !py-2.5" disabled={!text.trim()}>Add</button>
+      </form>
+    </section>
+  );
+}
+
 function SimilarCard({ item, have, onAdd }) {
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
@@ -124,6 +179,10 @@ export default function DetailModal({ movie, meId, people, existingKeys, actions
   const [d, setD] = useState(null);
   const [error, setError] = useState('');
   const [openSeasons, setOpenSeasons] = useState(new Set());
+  const [showTrailer, setShowTrailer] = useState(false);
+  const [planDate, setPlanDate] = useState(movie.planned_on ?? '');
+  const [planTime, setPlanTime] = useState(movie.planned_time ?? '');
+  useEffect(() => { setPlanDate(movie.planned_on ?? ''); setPlanTime(movie.planned_time ?? ''); }, [movie.planned_on, movie.planned_time]);
 
   useEffect(() => {
     if (byHand) return undefined;
@@ -134,6 +193,14 @@ export default function DetailModal({ movie, meId, people, existingKeys, actions
       .catch((e) => on && setError(e.message));
     return () => { on = false; };
   }, [movie.media_type, movie.tmdb_id, byHand]);
+
+  useEffect(() => {
+    if (!tracking || !d?.seasons?.length) return;
+    const counts = Object.fromEntries(d.seasons.filter((s) => s.number > 0).map((s) => [s.number, s.episodes]));
+    const have = movie.season_counts ?? {};
+    const same = Object.keys(counts).length === Object.keys(have).length && Object.entries(counts).every(([k, v]) => have[k] === v);
+    if (!same) actions.patch(movie, { season_counts: counts });
+  }, [d]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const poster = posterUrl(movie.poster_path, 'w342');
   const director = d?.director || movie.director;
@@ -146,6 +213,14 @@ export default function DetailModal({ movie, meId, people, existingKeys, actions
   const next = tracking && d ? nextUp(d.seasons, watchedMap) : null;
   const today = new Date().toLocaleDateString('en-CA');
 
+  const openTrailer = () => {
+    if (d?.trailer) { setShowTrailer(true); return; }
+    const q = encodeURIComponent(`${movie.title} ${movie.year ?? ''} trailer`);
+    window.open(`https://www.youtube.com/results?search_query=${q}`, '_blank', 'noopener');
+  };
+  const savePlan = () => actions.patch(movie, { planned_on: planDate || null, planned_time: planDate ? planTime || null : null });
+  const clearPlan = () => { setPlanDate(''); setPlanTime(''); actions.patch(movie, { planned_on: null, planned_time: null }); };
+
   const toggleSeason = (n) => setOpenSeasons((s) => {
     const c = new Set(s);
     if (c.has(n)) c.delete(n); else c.add(n);
@@ -153,11 +228,18 @@ export default function DetailModal({ movie, meId, people, existingKeys, actions
   });
 
   return (
+    <>
     <Modal title={movie.title} onClose={onClose} wide>
       <div className="flex gap-4">
-        <div className="aspect-[2/3] w-28 shrink-0 overflow-hidden rounded-xl bg-velvet sm:w-36">
+        <button
+          onClick={openTrailer} aria-label={`Watch the trailer for ${movie.title}`}
+          className="group relative aspect-[2/3] w-28 shrink-0 overflow-hidden rounded-xl bg-velvet sm:w-36"
+        >
           {poster && <img src={poster} alt={`${movie.title} poster`} className="h-full w-full object-cover" />}
-        </div>
+          <span className="absolute inset-x-0 bottom-0 flex items-center justify-center gap-1.5 bg-night/85 py-2 text-xs font-semibold text-stone-100 transition group-hover:bg-blush group-hover:text-night">
+            <Play size={13} fill="currentColor" /> Trailer
+          </span>
+        </button>
         <div className="min-w-0 space-y-2">
           <p className="text-sm text-mist">{[isSeries ? 'Series' : 'Movie', movie.year].filter(Boolean).join(', ')}</p>
           <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
@@ -182,16 +264,23 @@ export default function DetailModal({ movie, meId, people, existingKeys, actions
           </div>
           <div className="space-y-0.5 text-xs text-mist">
             {adder && (
-              <p className="flex items-center gap-2">
-                <Avatar person={adder} size={18} /> Added by <PersonName person={adder} />
+              <p>
+                <PersonLink person={adder} onOpen={people.open}>
+                  <Avatar person={adder} size={18} /> <span>Added by <PersonName person={adder} /></span>
+                </PersonLink>
               </p>
             )}
             {likers.length > 0 && (
               <p className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                {likers.map((p) => <Avatar key={p.id ?? p.name} person={p} size={18} />)}
+                {likers.map((p) => (
+                  <PersonLink key={p.id ?? p.name} person={p} onOpen={people.open}><Avatar person={p} size={18} /></PersonLink>
+                ))}
                 Wanted by
                 {likers.map((p, i) => (
-                  <span key={p.id ?? p.name}><PersonName person={p} />{i < likers.length - 2 ? ',' : i === likers.length - 2 ? ' and' : ''}</span>
+                  <span key={p.id ?? p.name}>
+                    <PersonLink person={p} onOpen={people.open}><PersonName person={p} /></PersonLink>
+                    {i < likers.length - 2 ? ',' : i === likers.length - 2 ? ' and' : ''}
+                  </span>
                 ))}
               </p>
             )}
@@ -210,6 +299,44 @@ export default function DetailModal({ movie, meId, people, existingKeys, actions
         </div>
       </div>
 
+      {!movie.watched && (
+        <section className="mt-6 rounded-2xl bg-plum p-4">
+          <h3 className="mb-1 font-display text-lg font-semibold">Plan a night</h3>
+          {movie.planned_on && (
+            <p className="mb-3 text-sm text-ember">
+              {fmtPlanDate(movie.planned_on)}{movie.planned_time ? ` at ${fmtTime(movie.planned_time)}` : ''}. {countdown(movie.planned_on)}
+            </p>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <input
+              type="date" min={today} value={planDate} onChange={(e) => setPlanDate(e.target.value)} aria-label="Date"
+              className="rounded-xl border border-velvet bg-night px-3 py-2 text-sm text-stone-100"
+            />
+            <input
+              type="time" value={planTime} onChange={(e) => setPlanTime(e.target.value)} aria-label="Time (optional)"
+              className="rounded-xl border border-velvet bg-night px-3 py-2 text-sm text-stone-100"
+            />
+            <button
+              onClick={savePlan} className="btn btn-primary !py-2 !text-xs"
+              disabled={!planDate || (planDate === (movie.planned_on ?? '') && planTime === (movie.planned_time ?? ''))}
+            >Save plan</button>
+          </div>
+          {movie.planned_on && (
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button onClick={() => downloadCalendarEvent(movie)} className="btn btn-ghost !py-2 !text-xs">
+                <CalendarPlus size={14} /> Add to calendar
+              </button>
+              <button onClick={clearPlan} className="btn btn-ghost !py-2 !text-xs text-mist">Clear plan</button>
+            </div>
+          )}
+        </section>
+      )}
+
+      <Notes
+        notes={movie.notes ?? []} people={people} meId={meId}
+        onAdd={(t) => actions.addNote(movie, t)} onRemove={(id) => actions.removeNote(movie, id)}
+      />
+
       {byHand ? (
         <p className="mt-6 rounded-xl bg-plum p-4 text-sm text-mist">
           You added this one yourself, so there's no summary or streaming info to show.
@@ -219,7 +346,7 @@ export default function DetailModal({ movie, meId, people, existingKeys, actions
           <section className="mt-6">
             <h3 className="mb-1.5 font-display text-lg font-semibold">Summary</h3>
             {error ? <p className="text-sm text-red-300">Couldn't load details: {error}</p>
-              : !d ? <p className="text-sm text-mist">Loading…</p>
+              : !d ? <Lines rows={4} />
               : <p className="text-sm leading-relaxed text-stone-200">{d.overview || 'TMDB has no summary for this one yet.'}</p>}
           </section>
 
@@ -285,5 +412,22 @@ export default function DetailModal({ movie, meId, people, existingKeys, actions
         <Trash2 size={15} /> Remove from our list
       </button>
     </Modal>
+
+    {showTrailer && d?.trailer && (
+      <Modal title={`${movie.title}: trailer`} onClose={() => setShowTrailer(false)} wide>
+        <div className="aspect-video w-full overflow-hidden rounded-xl bg-black">
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${d.trailer.key}?autoplay=1&rel=0`}
+            title={`${movie.title} trailer`} className="h-full w-full"
+            allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen
+          />
+        </div>
+        <a
+          href={`https://www.youtube.com/watch?v=${d.trailer.key}`} target="_blank" rel="noreferrer"
+          className="mt-3 inline-block text-sm text-blush underline-offset-4 hover:underline"
+        >Open on YouTube</a>
+      </Modal>
+    )}
+    </>
   );
 }

@@ -1,10 +1,18 @@
 import { useRef, useState } from 'react';
-import { ArrowLeft, Camera, Check, LogOut } from 'lucide-react';
+import { ArrowLeft, Camera, Check, Download, LogOut, Upload } from 'lucide-react';
 import { AddedBy, Avatar } from './Person';
-import { ACCENTS, FONTS, NAME_COLORS, applyAccent, photoToAvatar } from '../lib/customize';
+import PhotoCropper from './PhotoCropper';
+import { ACCENTS, FONTS, NAME_COLORS, applyAccent, photoToSource } from '../lib/customize';
+import { downloadBackup, downloadCsv, parseBackup } from '../lib/backup';
+import { FEATURES } from '../config';
 import { supabase } from '../lib/supabase';
 
-const STATUS = [['to-watch', 'To watch'], ['watched', 'Watched'], ['all', 'All']];
+const STATUS = [
+  ['to-watch', 'To watch'],
+  ...(FEATURES.episodeTracking ? [['watching', 'Watching']] : []),
+  ['watched', 'Watched'],
+  ['all', 'All'],
+];
 const SORTS = [
   ['shortest', 'Shortest first'], ['rating', 'Highest rated'], ['alpha', 'A to Z'],
   ['newest', 'Recently added'], ['likes', 'Most wanted'], ['watched', 'Recently watched'],
@@ -24,14 +32,21 @@ function Section({ title, hint, children }) {
 const chip = (on) =>
   `rounded-full border px-4 py-2.5 text-sm transition ${on ? 'border-blush bg-blush/10 text-blush' : 'border-velvet text-mist'}`;
 
-export default function SettingsPage({ user, me, profile, prefs, onSavePrefs, onSave, onBack, onSignOut }) {
+export default function SettingsPage({ user, me, profile, movies, prefs, onSavePrefs, onSave, onImport, onOpenProfile, onBack, onSignOut }) {
   const fileRef = useRef(null);
+  const backupRef = useRef(null);
   const savedFont = profile?.name_font ?? 'classic';
   const savedColor = profile?.name_color ?? null;
   const savedAvatar = profile?.avatar ?? null;
+  const savedBio = profile?.bio ?? '';
 
   const [name, setName] = useState(me.name);
   const [avatar, setAvatar] = useState(savedAvatar);
+  const [bio, setBio] = useState(savedBio);
+  const [avatarSrc, setAvatarSrc] = useState(null); // the larger original, kept so the photo can be re-adjusted
+  const [crop, setCrop] = useState(null); // photo currently open in the cropper
+  const [restore, setRestore] = useState(null);
+  const [backupMsg, setBackupMsg] = useState({ text: '', bad: false });
   const [font, setFont] = useState(savedFont);
   const [color, setColor] = useState(savedColor);
   const [accent, setAccent] = useState(profile?.accent ?? localStorage.getItem('accent') ?? 'rose');
@@ -42,21 +57,45 @@ export default function SettingsPage({ user, me, profile, prefs, onSavePrefs, on
   const [pw2, setPw2] = useState('');
   const [pwMsg, setPwMsg] = useState({ text: '', bad: false });
 
-  const dirty = name.trim() !== me.name || avatar !== savedAvatar || font !== savedFont || color !== savedColor;
+  const dirty = name.trim() !== me.name || bio.trim() !== savedBio || avatar !== savedAvatar || font !== savedFont || color !== savedColor;
   const preview = { name: name.trim() || 'You', avatar, name_font: font, name_color: color };
 
   const pickPhoto = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    try { setAvatar(await photoToAvatar(file)); setMsg({ text: '', bad: false }); }
+    try { setCrop(await photoToSource(file)); setMsg({ text: '', bad: false }); }
     catch { setMsg({ text: "That file couldn't be read as a photo. Try a JPG or PNG.", bad: true }); }
+  };
+
+  const adjustPhoto = async () => {
+    if (avatarSrc) { setCrop(avatarSrc); return; }
+    const { data } = await supabase.from('profiles').select('avatar_src').eq('id', user.id).maybeSingle();
+    setCrop(data?.avatar_src || avatar);
+  };
+
+  const pickBackup = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    try { setRestore(parseBackup(await file.text())); setBackupMsg({ text: '', bad: false }); }
+    catch (err) { setRestore(null); setBackupMsg({ text: err.message, bad: true }); }
+  };
+
+  const doRestore = async () => {
+    try {
+      const n = await onImport(restore);
+      setBackupMsg({ text: n ? `Added ${n} new ${n === 1 ? 'title' : 'titles'}.` : 'Everything in that file is already on your list.', bad: false });
+    } catch (err) { setBackupMsg({ text: `Couldn't restore: ${err.message}`, bad: true }); }
+    setRestore(null);
   };
 
   const saveProfile = async () => {
     setSaving(true); setMsg({ text: '', bad: false });
     try {
-      await onSave({ name: name.trim(), avatar, name_font: font, name_color: color });
+      const fields = { name: name.trim(), bio: bio.trim(), avatar, name_font: font, name_color: color };
+      if (avatar !== savedAvatar) fields.avatar_src = avatar ? avatarSrc : null;
+      await onSave(fields);
       setMsg({ text: 'Saved. Your partner will see this too.', bad: false });
     } catch {
       setMsg({ text: "Couldn't save. Run supabase-upgrade-v3.sql in Supabase first (see the README).", bad: true });
@@ -92,6 +131,7 @@ export default function SettingsPage({ user, me, profile, prefs, onSavePrefs, on
           <Avatar person={preview} size={80} />
           <div className="flex flex-wrap gap-2">
             <button onClick={() => fileRef.current?.click()} className="btn btn-ghost !py-2.5"><Camera size={16} /> {avatar ? 'Change photo' : 'Add a photo'}</button>
+            {avatar && <button onClick={adjustPhoto} className="btn btn-ghost !py-2.5">Adjust</button>}
             {avatar && <button onClick={() => setAvatar(null)} className="btn btn-ghost !py-2.5 text-mist">Remove</button>}
           </div>
           <input ref={fileRef} type="file" accept="image/*" onChange={pickPhoto} className="hidden" />
@@ -99,6 +139,13 @@ export default function SettingsPage({ user, me, profile, prefs, onSavePrefs, on
 
         <label className="mt-5 block text-sm text-mist" htmlFor="display-name">Name</label>
         <input id="display-name" className="input mt-1.5" value={name} maxLength={30} onChange={(e) => setName(e.target.value)} />
+
+        <label className="mt-5 block text-sm text-mist" htmlFor="bio">About you</label>
+        <textarea
+          id="bio" rows={2} maxLength={140} value={bio} onChange={(e) => setBio(e.target.value)}
+          placeholder="Favourite genre, comfort movie, anything" className="input mt-1.5 resize-none"
+        />
+        <p className="mt-1 text-right text-xs text-mist">{bio.length}/140</p>
 
         <p className="mb-2 mt-5 text-sm text-mist">Name style</p>
         <div className="flex flex-wrap gap-2">
@@ -135,6 +182,9 @@ export default function SettingsPage({ user, me, profile, prefs, onSavePrefs, on
           <button onClick={saveProfile} disabled={!dirty || saving || !name.trim()} className="btn btn-primary !px-6">{saving ? 'Saving…' : 'Save profile'}</button>
           {msg.text && <p className={`text-sm ${msg.bad ? 'text-red-300' : 'text-mist'}`}>{msg.text}</p>}
         </div>
+        <button onClick={() => onOpenProfile(user.id)} className="mt-4 text-sm text-blush underline-offset-4 hover:underline">
+          See how your profile page looks
+        </button>
       </Section>
 
       <Section title="Appearance" hint="The accent colour is just for you. Your partner keeps their own.">
@@ -166,6 +216,25 @@ export default function SettingsPage({ user, me, profile, prefs, onSavePrefs, on
         </div>
       </Section>
 
+      <Section title="Backup and export" hint="Keep a copy of the whole list: titles, who added and wants what, watch dates, plans, notes and episode progress.">
+        <div className="flex flex-wrap gap-2">
+          <button onClick={() => downloadBackup(movies)} className="btn btn-ghost"><Download size={16} /> Download backup</button>
+          <button onClick={() => downloadCsv(movies)} className="btn btn-ghost"><Download size={16} /> Spreadsheet (CSV)</button>
+          <button onClick={() => backupRef.current?.click()} className="btn btn-ghost"><Upload size={16} /> Restore from backup</button>
+          <input ref={backupRef} type="file" accept=".json,application/json" onChange={pickBackup} className="hidden" />
+        </div>
+        {restore && (
+          <div className="mt-4 rounded-2xl bg-night p-4">
+            <p className="text-sm">Found {restore.length} {restore.length === 1 ? 'title' : 'titles'}. Add the ones that aren't on your list yet? Anything already there stays as it is.</p>
+            <div className="mt-3 flex gap-2">
+              <button onClick={doRestore} className="btn btn-primary !py-2">Restore</button>
+              <button onClick={() => setRestore(null)} className="btn btn-ghost !py-2">Cancel</button>
+            </div>
+          </div>
+        )}
+        {backupMsg.text && <p className={`mt-3 text-sm ${backupMsg.bad ? 'text-red-300' : 'text-mist'}`}>{backupMsg.text}</p>}
+      </Section>
+
       <Section title="Account">
         <p className="text-sm text-mist">Signed in as</p>
         <p className="mb-5 break-all font-semibold">{user.email}</p>
@@ -180,6 +249,13 @@ export default function SettingsPage({ user, me, profile, prefs, onSavePrefs, on
         </form>
         <button onClick={onSignOut} className="btn btn-ghost mt-6 w-full !py-3"><LogOut size={16} /> Sign out</button>
       </Section>
+
+      {crop && (
+        <PhotoCropper
+          src={crop} onCancel={() => setCrop(null)}
+          onDone={(url) => { setAvatar(url); setAvatarSrc(crop); setCrop(null); setMsg({ text: '', bad: false }); }}
+        />
+      )}
     </div>
   );
 }

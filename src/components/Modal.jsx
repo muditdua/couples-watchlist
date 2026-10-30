@@ -1,12 +1,19 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { useScrollLock } from '../hooks/useScrollLock';
 
 // Bottom sheet on phones, centered dialog on larger screens
+const stack = []; // open pop-ups, so Escape only closes the one on top
+
 export default function Modal({ title, onClose, children, wide = false }) {
   useScrollLock();
+  const id = useRef({});
   useEffect(() => {
-    const onKey = (e) => e.key === 'Escape' && onClose();
+    stack.push(id.current);
+    return () => { stack.splice(stack.indexOf(id.current), 1); };
+  }, []);
+  useEffect(() => {
+    const onKey = (e) => e.key === 'Escape' && stack[stack.length - 1] === id.current && onClose();
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
@@ -24,7 +31,7 @@ export default function Modal({ title, onClose, children, wide = false }) {
             <X size={20} />
           </button>
         </div>
-        <div className="no-scrollbar overflow-y-auto overscroll-contain px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">{children}</div>
+        <div className="no-scrollbar overscroll-contain overflow-y-auto px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))]">{children}</div>
       </div>
     </div>
   );
