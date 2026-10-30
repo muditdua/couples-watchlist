@@ -1,4 +1,4 @@
-import { Search, X } from 'lucide-react';
+import { Heart, Search, X } from 'lucide-react';
 import SortMenu from './SortMenu';
 import { FEATURES } from '../config';
 
@@ -12,6 +12,7 @@ const TYPES = [['all', 'Everything', 'All'], ['movie', 'Movies', 'Movies'], ['tv
 
 export default function Filters({
   query, setQuery, status, setStatus, type, setType, genre, setGenre, genres, sort, setSort,
+  bothOnly, setBothOnly, bothCount, onMine, setOnMine, hasMine,
 }) {
   return (
     <div className="space-y-3">
@@ -55,6 +56,20 @@ export default function Filters({
       </div>
 
       <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
+        {(bothCount > 0 || bothOnly) && (
+          <button
+            onClick={() => setBothOnly(!bothOnly)} aria-pressed={bothOnly}
+            className={`flex shrink-0 items-center gap-1.5 rounded-full border px-4 py-2 text-sm transition ${bothOnly ? 'border-blush bg-blush/10 text-blush' : 'border-velvet text-mist'}`}
+          >
+            <Heart size={14} fill={bothOnly ? 'currentColor' : 'none'} /> We both want ({bothCount})
+          </button>
+        )}
+        {hasMine && (
+          <button
+            onClick={() => setOnMine(!onMine)} aria-pressed={onMine}
+            className={`shrink-0 rounded-full border px-4 py-2 text-sm transition ${onMine ? 'border-blush bg-blush/10 text-blush' : 'border-velvet text-mist'}`}
+          >On my services</button>
+        )}
         {['All', ...genres].map((g) => {
           const active = (g === 'All' && genre === 'all') || g === genre;
           return (

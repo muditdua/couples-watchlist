@@ -79,3 +79,5 @@ alter table public.movies add column if not exists likes jsonb not null default 
 alter table public.movies add column if not exists episodes_watched jsonb not null default '{}'::jsonb;
 
 alter table if exists public.profiles add column if not exists avatar_large text;
+
+alter table if exists public.profiles add column if not exists my_services jsonb;

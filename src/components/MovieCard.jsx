@@ -11,7 +11,7 @@ import { fmtTime, planLabel } from '../lib/plan';
 const shortDate = (iso) =>
   iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '';
 
-export default function MovieCard({ movie, meId, addedBy, onToggle, onLike, onRemove, onOpen, onOpenProfile }) {
+export default function MovieCard({ movie, meId, addedBy, mine, onToggle, onLike, onRemove, onOpen, onOpenProfile }) {
   const poster = posterUrl(movie.poster_path);
   const isSeries = movie.media_type === 'tv';
   const providers = useProviders(movie.media_type, movie.tmdb_id, movie.tmdb_id > 0); // hand-added titles have no TMDB id
@@ -88,7 +88,7 @@ export default function MovieCard({ movie, meId, addedBy, onToggle, onLike, onRe
         {notes > 0 && (
           <p className="flex items-center gap-1.5 text-xs text-mist"><MessageSquare size={13} /> {notes} {notes === 1 ? 'note' : 'notes'}</p>
         )}
-        {movie.tmdb_id > 0 && <div className="pt-1"><ProviderRow data={providers} /></div>}
+        {movie.tmdb_id > 0 && <div className="pt-1"><ProviderRow data={providers} mine={mine} /></div>}
         {addedBy && <div className="mt-auto pt-2"><AddedBy person={addedBy} onOpen={onOpenProfile ? () => onOpenProfile(addedBy.id) : undefined} /></div>}
         <div className={`relative z-10 flex gap-2 pt-3 ${addedBy ? '' : 'mt-auto'}`}>
           <button onClick={() => onToggle(movie)} className="btn btn-ghost min-w-0 flex-1 !px-2 !py-2.5 !text-xs">

@@ -1,7 +1,7 @@
-import { Settings } from 'lucide-react';
+import { CalendarDays, Settings } from 'lucide-react';
 import { Avatar } from './Person';
 
-export default function Header({ total, toWatch, watching, thisYear, people, onOpenProfile, onOpenSettings }) {
+export default function Header({ total, toWatch, watching, thisYear, people, onOpenProfile, onOpenCalendar, onOpenSettings }) {
   const watched = total - toWatch - watching;
   return (
     <header className="flex items-start justify-between gap-4 pt-[max(1.5rem,env(safe-area-inset-top))]">
@@ -17,9 +17,12 @@ export default function Header({ total, toWatch, watching, thisYear, people, onO
             <button
               key={p.id} onClick={() => onOpenProfile(p.id)} aria-label={`${p.name}'s profile`} title={p.name}
               className="rounded-full ring-2 ring-night transition hover:z-10 hover:ring-blush"
-            ><Avatar person={p} size={40} /></button>
+            ><Avatar person={p} size={36} /></button>
           ))}
         </div>
+        <button onClick={onOpenCalendar} aria-label="Plans calendar" title="Plans calendar" className="btn btn-ghost !h-11 !w-11 !px-0">
+          <CalendarDays size={18} />
+        </button>
         <button onClick={onOpenSettings} aria-label="Settings" title="Settings" className="btn btn-ghost !h-11 !w-11 !px-0">
           <Settings size={18} />
         </button>

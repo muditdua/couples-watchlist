@@ -93,3 +93,11 @@ Run these once in the Supabase SQL Editor, in order: `supabase-upgrade-v2.sql`, 
 ## Staying signed in
 
 The login is saved in the browser and renewed automatically. If you still get signed out after restarting your computer, your browser is clearing the site's data on exit. In Brave: Settings > Cookies and other site data (or Privacy and security) > turn off "Clear cookies and site data when you close all windows", and add your site address to "Sites that can always use cookies".
+
+## Install, calendar, undo, services
+
+- **Install:** open the live site and use Settings > Install the app (or your browser's "Add to Home screen"). The app opens full screen with its own icon.
+- **Plans calendar:** the calendar button at the top shows a month of planned nights. Tap a day, plan something, or move a plan to another date.
+- **Undo:** removing a title (or marking it watched) shows an Undo bar for 6 seconds. A removal only becomes final when the bar goes away.
+- **We both want:** a chip in the filters shows only the titles you have both hearted.
+- **Streaming:** Settings > Streaming sets your country and the services you pay for. Run `supabase-upgrade-v5.sql` once so "My services" syncs between your devices.

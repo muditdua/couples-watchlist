@@ -1,22 +1,24 @@
 import { REGION_NAME, logoUrl } from '../lib/tmdb';
 
-function Logo({ p, small }) {
+function Logo({ p, small, mine }) {
   const url = logoUrl(p.logo);
   const size = small ? 'h-6 w-6' : 'h-7 w-7';
   return url
-    ? <img src={url} alt={p.name} title={p.name} loading="lazy" className={`${size} shrink-0 rounded-md object-cover`} />
+    ? <img src={url} alt={p.name} title={p.name} loading="lazy" className={`${size} shrink-0 rounded-md object-cover ${mine ? 'ring-2 ring-blush' : ''}`} />
     : <span title={p.name} className={`${size} flex shrink-0 items-center justify-center rounded-md bg-velvet text-[10px] text-mist`}>{p.name.slice(0, 2)}</span>;
 }
 
 // Compact one-line version used on cards and in search results
-export function ProviderRow({ data, small = false }) {
+export function ProviderRow({ data, small = false, mine }) {
   if (data === undefined) return <div className={small ? 'h-6' : 'h-7'} aria-hidden="true" />;
   if (!data) return null;
   const main = data.stream.length ? data.stream : data.free;
+  // your own services first
+  const ordered = mine?.size ? [...main].sort((a, b) => Number(mine.has(b.id)) - Number(mine.has(a.id))) : main;
   if (main.length) {
     return (
       <div className="flex items-center gap-1.5" aria-label={`Available on ${main.map((p) => p.name).join(', ')}`}>
-        {main.slice(0, 4).map((p) => <Logo key={p.id} p={p} small={small} />)}
+        {ordered.slice(0, 4).map((p) => <Logo key={p.id} p={p} small={small} mine={mine?.has(p.id)} />)}
         {main.length > 4 && <span className="text-xs text-mist">+{main.length - 4}</span>}
         {!data.stream.length && <span className="text-xs font-semibold text-ember">Free</span>}
       </div>

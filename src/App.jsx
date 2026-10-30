@@ -17,7 +17,8 @@ import NextNight from './components/NextNight';
 import MovieCard from './components/MovieCard';
 import SearchModal from './components/SearchModal';
 import DecisionModal from './components/DecisionModal';
-import ConfirmDialog from './components/ConfirmDialog';
+import UndoBars from './components/UndoBars';
+import CalendarPage from './components/CalendarPage';
 import DetailModal from './components/DetailModal';
 import NamePrompt from './components/NamePrompt';
 import ResetPassword from './components/ResetPassword';
@@ -96,6 +97,9 @@ export default function App() {
   );
 }
 
+const loadMyServices = () => {
+  try { return JSON.parse(localStorage.getItem('myServices') || '[]'); } catch { return []; }
+};
 const loadServices = () => {
   try { return new Set(JSON.parse(localStorage.getItem('services') || '[]')); } catch { return new Set(); }
 };
@@ -117,10 +121,12 @@ function Watchlist({ user, onSignOut }) {
   };
   const mePerson = { ...(profiles.me ?? {}), id: user.id, name: who.name };
 
+  const [removed, setRemoved] = useState([]); // titles hidden while their Undo bar is showing
   const {
-    movies, loading, error, add, patch, toggleWatched, setWatchedDate, toggleLike, toggleEpisode, markSeason,
+    movies: allMovies, loading, error, add, patch, toggleWatched, setWatchedDate, toggleLike, toggleEpisode, markSeason,
     addNote, removeNote, importRows, remove,
   } = useWatchlist(who);
+  const movies = useMemo(() => allMovies.filter((m) => !removed.includes(m.id)), [allMovies, removed]);
   const providersMap = useAllProviders(movies);
 
   const [prefs, setPrefs] = useState(loadPrefs);
@@ -130,10 +136,13 @@ function Watchlist({ user, onSignOut }) {
   const [sort, setSort] = useState(prefs.sort);
   const [services, setServices] = useState(loadServices);
   const [modal, setModal] = useState(null); // 'search' | 'decide' | null
-  const [pendingRemove, setPendingRemove] = useState(null);
+  const [toasts, setToasts] = useState([]);
+  const pending = useRef(new Map());
+  const [bothOnly, setBothOnly] = useState(false);
+  const [onMine, setOnMine] = useState(false);
   const [query, setQuery] = useState('');
   const [detailId, setDetailId] = useState(null);
-  const [view, setView] = useState('list'); // 'list' | 'settings' | 'profile'
+  const [view, setView] = useState('list'); // 'list' | 'settings' | 'profile' | 'calendar'
   const [profileId, setProfileId] = useState(null);
   const [nameDismissed, setNameDismissed] = useState(() => Boolean(localStorage.getItem('name-prompt-skipped')));
   const detailMovie = movies.find((m) => m.id === detailId); // looked up live so changes show instantly
@@ -155,6 +164,7 @@ function Watchlist({ user, onSignOut }) {
     window.scrollTo(0, 0);
   };
   const openSettings = () => goTo('settings');
+  const openCalendar = () => goTo('calendar');
   const openProfile = (id) => { if (id) { setDetailId(null); goTo('profile', id); } };
 
   // Your accent colour (each person has their own)
@@ -188,6 +198,50 @@ function Watchlist({ user, onSignOut }) {
       await supabase.from('movies').update({ added_by_id: who.id, added_by: fields.name })
         .eq('added_by', oldName).is('added_by_id', null);
     }
+  };
+
+  // Your streaming services (saved on your profile, with a copy on this device)
+  const myServices = useMemo(() => profiles.me?.my_services ?? loadMyServices(), [profiles.me?.my_services]);
+  const mineSet = useMemo(() => new Set(myServices), [myServices]);
+  const saveMyServices = (ids) => {
+    try { localStorage.setItem('myServices', JSON.stringify(ids)); } catch { /* ignore */ }
+    saveProfile({ my_services: ids }).catch(() => {});
+  };
+
+  // Undo bars: removing a title hides it at once and only deletes it for real after 6 seconds
+  const notify = ({ text, onUndo, onExpire }) => {
+    const id = crypto.randomUUID();
+    setToasts((t) => [...t.slice(-2), { id, text }]);
+    const timer = setTimeout(() => {
+      pending.current.delete(id);
+      setToasts((t) => t.filter((x) => x.id !== id));
+      if (onExpire) onExpire();
+    }, 6000);
+    pending.current.set(id, { timer, onUndo });
+  };
+  const undo = (id) => {
+    const p = pending.current.get(id);
+    if (!p) return;
+    clearTimeout(p.timer);
+    pending.current.delete(id);
+    setToasts((t) => t.filter((x) => x.id !== id));
+    p.onUndo();
+  };
+  const requestRemove = (movie) => {
+    setRemoved((r) => [...r, movie.id]);
+    notify({
+      text: `Removed ${movie.title}`,
+      onUndo: () => setRemoved((r) => r.filter((id) => id !== movie.id)),
+      onExpire: () => { remove(movie); setRemoved((r) => r.filter((id) => id !== movie.id)); },
+    });
+  };
+  const toggleWatchedUndo = (movie) => {
+    const before = { watched: movie.watched, watched_at: movie.watched_at ?? null };
+    toggleWatched(movie);
+    notify({
+      text: movie.watched ? `${movie.title} is back on your list` : `Marked ${movie.title} as watched`,
+      onUndo: () => patch(movie, before),
+    });
   };
 
   const savePrefs = (next) => {
@@ -224,12 +278,18 @@ function Watchlist({ user, onSignOut }) {
 
   const genres = useMemo(() => [...new Set(movies.flatMap((m) => m.genres))].sort(), [movies]);
   const wants = (m) => Object.keys(m.likes ?? {}).length;
+  const bothWant = (m) => wants(m) >= 2;
+  const bothCount = movies.filter(bothWant).length;
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase();
     const onService = (m) => {
       const d = providersMap[`${m.media_type}-${m.tmdb_id}`];
       return Boolean(d) && [...d.stream, ...d.free].some((p) => services.has(p.id));
+    };
+    const onMineService = (m) => {
+      const d = providersMap[`${m.media_type}-${m.tmdb_id}`];
+      return Boolean(d) && [...d.stream, ...d.free].some((p) => mineSet.has(p.id));
     };
     const inStatus = (m) => {
       if (status === 'all') return true;
@@ -242,6 +302,8 @@ function Watchlist({ user, onSignOut }) {
       (type === 'all' || m.media_type === type) &&
       (genre === 'all' || m.genres.includes(genre)) &&
       (!services.size || onService(m)) &&
+      (!bothOnly || bothWant(m)) &&
+      (!onMine || onMineService(m)) &&
       (!q || [m.title, m.director, m.added_by, ...(m.cast_names ?? [])]
         .filter(Boolean).some((s) => s.toLowerCase().includes(q))));
     const byNewest = (a, b) => new Date(b.created_at) - new Date(a.created_at);
@@ -254,7 +316,7 @@ function Watchlist({ user, onSignOut }) {
       watched: (a, b) => new Date(b.watched_at || 0) - new Date(a.watched_at || 0),
     }[sort];
     return [...list].sort(by);
-  }, [movies, query, status, type, genre, sort, services, providersMap]);
+  }, [movies, query, status, type, genre, sort, services, providersMap, bothOnly, onMine, mineSet]);
 
   const watching = movies.filter(isWatching).length;
   const toWatch = movies.filter((m) => !m.watched && !isWatching(m)).length;
@@ -262,8 +324,8 @@ function Watchlist({ user, onSignOut }) {
     (m) => m.watched && m.watched_at && new Date(m.watched_at).getFullYear() === new Date().getFullYear()
   ).length;
 
-  const actions = { add, patch, toggleWatched, toggleLike, setWatchedDate, toggleEpisode, markSeason, addNote, removeNote };
-  const filtered = Boolean(query || services.size || genre !== 'all' || type !== 'all');
+  const actions = { add, patch, toggleWatched: toggleWatchedUndo, toggleLike, setWatchedDate, toggleEpisode, markSeason, addNote, removeNote };
+  const filtered = Boolean(query || services.size || bothOnly || onMine || genre !== 'all' || type !== 'all');
   const existingKeys = new Set(movies.map((m) => `${m.media_type}-${m.tmdb_id}`));
   const profilePerson = people.find((p) => p.id === profileId) ?? mePerson;
 
@@ -271,9 +333,16 @@ function Watchlist({ user, onSignOut }) {
   if (view === 'settings') {
     page = (
       <SettingsPage
-        user={user} me={mePerson} profile={profiles.me} movies={movies} prefs={prefs}
-        onSavePrefs={savePrefs} onSave={saveProfile} onImport={importRows} onOpenProfile={openProfile}
+        user={user} me={mePerson} profile={profiles.me} movies={movies} prefs={prefs} myServices={myServices}
+        onSavePrefs={savePrefs} onSave={saveProfile} onSaveServices={saveMyServices} onImport={importRows} onOpenProfile={openProfile}
         onBack={() => window.history.back()} onSignOut={onSignOut}
+      />
+    );
+  } else if (view === 'calendar') {
+    page = (
+      <CalendarPage
+        movies={movies} onBack={() => window.history.back()} onOpenTitle={(m) => setDetailId(m.id)}
+        onSetDate={(m, to) => patch(m, { planned_on: to, planned_time: to ? m.planned_time ?? null : null })}
       />
     );
   } else if (view === 'profile') {
@@ -288,7 +357,7 @@ function Watchlist({ user, onSignOut }) {
       <div className="mx-auto max-w-5xl space-y-5 px-4 pb-32">
         <Header
           total={movies.length} toWatch={toWatch} watching={watching} thisYear={thisYear}
-          people={people} onOpenProfile={openProfile} onOpenSettings={openSettings}
+          people={people} onOpenProfile={openProfile} onOpenCalendar={openCalendar} onOpenSettings={openSettings}
         />
         {!online && (
           <p role="status" className="rounded-xl bg-amber-950/50 p-3 text-sm text-amber-200">
@@ -296,7 +365,7 @@ function Watchlist({ user, onSignOut }) {
           </p>
         )}
         <NextNight movies={movies} onOpen={(m) => setDetailId(m.id)} />
-        <Filters {...{ query, setQuery, status, setStatus, type, setType, genre, setGenre, genres, sort, setSort }} />
+        <Filters {...{ query, setQuery, status, setStatus, type, setType, genre, setGenre, genres, sort, setSort, bothOnly, setBothOnly, bothCount, onMine, setOnMine }} hasMine={mineSet.size > 0} />
         <ServiceChips providersMap={providersMap} selected={services} onToggle={toggleService} onClear={() => setServices(new Set())} />
         {error && <p className="rounded-xl bg-red-950/60 p-3 text-sm text-red-200">Couldn't sync: {error}</p>}
 
@@ -306,8 +375,8 @@ function Watchlist({ user, onSignOut }) {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
             {visible.map((m) => (
               <MovieCard
-                key={m.id} movie={m} meId={who.id} addedBy={personOf(m)}
-                onToggle={toggleWatched} onLike={toggleLike} onRemove={setPendingRemove}
+                key={m.id} movie={m} meId={who.id} addedBy={personOf(m)} mine={mineSet}
+                onToggle={toggleWatchedUndo} onLike={toggleLike} onRemove={requestRemove}
                 onOpen={(x) => setDetailId(x.id)} onOpenProfile={openProfile}
               />
             ))}
@@ -343,7 +412,7 @@ function Watchlist({ user, onSignOut }) {
       {modal === 'search' && <SearchModal existingKeys={existingKeys} onAdd={add} onClose={() => setModal(null)} />}
       {detailMovie && (
         <DetailModal
-          movie={detailMovie} meId={who.id} actions={actions} onRemove={setPendingRemove}
+          movie={detailMovie} meId={who.id} actions={actions} onRemove={requestRemove}
           people={{ adder: personOf, likers: likersOf, byId: personById, open: (p) => openProfile(p.id) }}
           existingKeys={existingKeys} onClose={() => setDetailId(null)}
         />
@@ -357,13 +426,7 @@ function Watchlist({ user, onSignOut }) {
           onClose={() => { setNameDismissed(true); try { localStorage.setItem('name-prompt-skipped', '1'); } catch { /* ignore */ } }}
         />
       )}
-      {pendingRemove && (
-        <ConfirmDialog
-          movie={pendingRemove}
-          onCancel={() => setPendingRemove(null)}
-          onConfirm={() => { remove(pendingRemove); setPendingRemove(null); }}
-        />
-      )}
+      <UndoBars toasts={toasts} onUndo={undo} />
     </>
   );
 }

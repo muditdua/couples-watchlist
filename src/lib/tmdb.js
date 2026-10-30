@@ -17,7 +17,8 @@ export const posterUrl = (path, size = 'w500') =>
   path ? `https://image.tmdb.org/t/p/${size}${path}` : null;
 
 // ---------- Where to watch (data from JustWatch, via TMDB) ----------
-export const REGION = (import.meta.env.VITE_WATCH_REGION || 'IN').toUpperCase();
+const savedRegion = (() => { try { return localStorage.getItem('region'); } catch { return null; } })();
+export const REGION = (savedRegion || import.meta.env.VITE_WATCH_REGION || 'IN').toUpperCase();
 export const REGION_NAME = (() => {
   try { return new Intl.DisplayNames(['en'], { type: 'region' }).of(REGION) || REGION; }
   catch { return REGION; }
@@ -51,6 +52,27 @@ function pickTrailer(videos = []) {
 
 export async function getProviders(mediaType, tmdbId) {
   return pickProviders(await get(`/${mediaType}/${tmdbId}/watch/providers`));
+}
+
+// Countries TMDB has streaming data for
+export async function getRegions() {
+  const d = await get('/watch/providers/regions');
+  return d.results.map((r) => ({ code: r.iso_3166_1, name: r.english_name })).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Most popular streaming services in your country, for "My services"
+export async function getProviderCatalog() {
+  const [m, t] = await Promise.all([
+    get('/watch/providers/movie', { watch_region: REGION }),
+    get('/watch/providers/tv', { watch_region: REGION }),
+  ]);
+  const all = new Map();
+  [...m.results, ...t.results].forEach((p) => {
+    if (!all.has(p.provider_id)) {
+      all.set(p.provider_id, { id: p.provider_id, name: p.provider_name, logo: p.logo_path, rank: p.display_priorities?.[REGION] ?? 999 });
+    }
+  });
+  return [...all.values()].sort((a, b) => a.rank - b.rank).slice(0, 48);
 }
 
 export const logoUrl = (path) => (path ? `https://image.tmdb.org/t/p/w92${path}` : null);

@@ -3,6 +3,8 @@ import { ArrowLeft, Camera, Check, Download, LogOut, Upload } from 'lucide-react
 import { AddedBy, Avatar } from './Person';
 import PhotoCropper from './PhotoCropper';
 import PhotoViewer from './PhotoViewer';
+import StreamingSettings from './StreamingSettings';
+import { useInstall } from '../lib/install';
 import { ACCENTS, FONTS, NAME_COLORS, applyAccent, photoToSource } from '../lib/customize';
 import { downloadBackup, downloadCsv, parseBackup } from '../lib/backup';
 import { FEATURES } from '../config';
@@ -33,7 +35,8 @@ function Section({ title, hint, children }) {
 const chip = (on) =>
   `rounded-full border px-4 py-2.5 text-sm transition ${on ? 'border-blush bg-blush/10 text-blush' : 'border-velvet text-mist'}`;
 
-export default function SettingsPage({ user, me, profile, movies, prefs, onSavePrefs, onSave, onImport, onOpenProfile, onBack, onSignOut }) {
+export default function SettingsPage({ user, me, profile, movies, prefs, myServices, onSavePrefs, onSave, onSaveServices, onImport, onOpenProfile, onBack, onSignOut }) {
+  const install = useInstall();
   const fileRef = useRef(null);
   const backupRef = useRef(null);
   const savedFont = profile?.name_font ?? 'classic';
@@ -224,6 +227,22 @@ export default function SettingsPage({ user, me, profile, movies, prefs, onSaveP
             <button key={v} onClick={() => onSavePrefs({ ...prefs, sort: v })} aria-pressed={prefs.sort === v} className={chip(prefs.sort === v)}>{label}</button>
           ))}
         </div>
+      </Section>
+
+      <Section title="Streaming" hint="Pick your country and tick the services you pay for. Titles on them get a pink ring on their logo, and you can filter the list to them.">
+        <StreamingSettings myServices={myServices} onSave={onSaveServices} />
+      </Section>
+
+      <Section title="Install the app" hint="Add it to your home screen for a full-screen app with its own icon.">
+        {install.installed ? (
+          <p className="text-sm text-mist">You're using the installed app.</p>
+        ) : install.canPrompt ? (
+          <button onClick={install.install} className="btn btn-primary">Install app</button>
+        ) : install.isIOS ? (
+          <p className="text-sm text-mist">In Safari, tap the Share button, then "Add to Home Screen".</p>
+        ) : (
+          <p className="text-sm text-mist">Open your browser's menu and choose "Install app" or "Add to Home screen".</p>
+        )}
       </Section>
 
       <Section title="Backup and export" hint="Keep a copy of the whole list: titles, who added and wants what, watch dates, plans, notes and episode progress.">
